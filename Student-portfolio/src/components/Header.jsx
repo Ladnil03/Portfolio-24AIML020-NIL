@@ -1,6 +1,16 @@
 import React from "react";
+import { NavLink } from "react-router-dom";
 
-function Header() {
+function Header({ theme, toggleTheme }) {
+    const linkStyle = ({ isActive }) => ({
+        color: isActive ? "#22c55e" : "white",
+        textDecoration: "none",
+        marginRight: "30px",
+        fontSize: "20px",
+        fontWeight: "bold",
+        transition: "color 0.3s"
+    });
+
     return (
         <header
             style={{
@@ -26,31 +36,35 @@ function Header() {
                 Student Portfolio
             </h1>
 
-            <nav>
-                <a
-                    href="#about"
-                    style={{
-                        color: "white",
-                        textDecoration: "none",
-                        marginRight: "30px",
-                        fontSize: "20px",
-                        fontWeight: "bold",
-                    }}
-                >
-                    About
-                </a>
+            <nav style={{ display: "flex", alignItems: "center" }}>
+                <NavLink to="/" style={linkStyle}>
+                    Home
+                </NavLink>
 
-                <a
-                    href="#skills"
+                <NavLink to="/projects" style={linkStyle}>
+                    Projects
+                </NavLink>
+
+                <NavLink to="/contact" style={linkStyle}>
+                    Contact
+                </NavLink>
+
+                <button
+                    onClick={toggleTheme}
                     style={{
+                        backgroundColor: "transparent",
                         color: "white",
-                        textDecoration: "none",
-                        fontSize: "20px",
+                        border: "2px solid #22c55e",
+                        borderRadius: "8px",
+                        padding: "6px 12px",
+                        fontSize: "16px",
                         fontWeight: "bold",
+                        cursor: "pointer",
+                        transition: "0.3s"
                     }}
                 >
-                    Skills
-                </a>
+                    {theme === "light" ? "🌙 Dark" : "☀️ Light"}
+                </button>
             </nav>
         </header>
     );
