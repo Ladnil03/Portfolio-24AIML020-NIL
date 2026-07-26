@@ -16,15 +16,20 @@ function Skill() {
         <section
             id="skills"
             style={{
-                padding: "50px",
+                padding: "40px 20px 60px",
+                maxWidth: "1000px",
+                margin: "0 auto",
+                width: "100%",
+                boxSizing: "border-box"
             }}
         >
             <h1
                 style={{
                     textAlign: "center",
-                    color: "#111",
-                    fontSize: "45px",
-                    marginBottom: "40px",
+                    color: "var(--text-h)",
+                    fontSize: "36px",
+                    marginBottom: "35px",
+                    fontWeight: "700"
                 }}
             >
                 My Skills
@@ -33,24 +38,25 @@ function Skill() {
             <div
                 style={{
                     display: "grid",
-                    gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))",
-                    gap: "25px",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+                    gap: "20px",
                 }}
             >
                 {skills.map((skill) => (
                     <div
                         key={skill}
                         style={{
-                            backgroundColor: "#111",
-                            color: "white",
-                            padding: "30px",
+                            backgroundColor: "var(--card-bg)",
+                            color: "var(--text-h)",
+                            padding: "24px 20px",
                             textAlign: "center",
-                            borderRadius: "15px",
-                            border: "3px solid #22c55e",
-                            fontSize: "22px",
-                            fontWeight: "bold",
-                            transition: "0.3s",
-                            boxShadow: "0 8px 20px rgba(0,0,0,.2)",
+                            borderRadius: "14px",
+                            border: "2px solid #22c55e",
+                            fontSize: "20px",
+                            fontWeight: "600",
+                            transition: "transform 0.3s ease, box-shadow 0.3s ease",
+                            boxShadow: "var(--shadow)",
+                            cursor: "default"
                         }}
                     >
                         {skill}

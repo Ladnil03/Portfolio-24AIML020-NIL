@@ -4,7 +4,7 @@ import './App.css';
 import Header from "./components/Header";
 import Footer from "./components/Footer";
 import Home from "./Pages/Home";
-import Projects from "./Pages/Project";
+import Projects from "./Pages/Projects";
 import Contact from "./Pages/Contact";
 import NotFound from "./Pages/NotFound";
 
