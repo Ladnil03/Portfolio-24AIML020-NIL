@@ -4,7 +4,7 @@ import './App.css';
 import Header from "./components/Header";
 import Footer from "./components/Footer";
 import Home from "./Pages/Home";
-import Projects from "./Pages/Projects";
+import Tasks from "./Pages/Tasks";
 import Contact from "./Pages/Contact";
 import NotFound from "./Pages/NotFound";
 
@@ -46,7 +46,8 @@ function App() {
         <main style={{ flexGrow: 1 }}>
           <Routes>
             <Route path="/" element={<Home />} />
-            <Route path="/projects" element={<Projects />} />
+            <Route path="/tasks" element={<Tasks />} />
+            <Route path="/projects" element={<Tasks />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

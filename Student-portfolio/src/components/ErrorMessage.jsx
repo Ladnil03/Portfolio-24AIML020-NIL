@@ -1,6 +1,10 @@
 import React from "react";
 
-function ErrorMessage({ message, onRetry }) {
+function ErrorMessage({
+  title = "Failed to Load Tasks",
+  message,
+  onRetry,
+}) {
   return (
     <div
       style={{
@@ -35,7 +39,7 @@ function ErrorMessage({ message, onRetry }) {
         ⚠️
       </div>
       <h2 style={{ color: "#ef4444", fontSize: "24px", margin: "0 0 10px" }}>
-        Failed to Load Repositories
+        {title}
       </h2>
       <p
         style={{
@@ -45,7 +49,7 @@ function ErrorMessage({ message, onRetry }) {
           marginBottom: "20px",
         }}
       >
-        {message || "An unexpected error occurred while fetching data from the API."}
+        {message || "An unexpected error occurred while communicating with the MongoDB API."}
       </p>
       {onRetry && (
         <button

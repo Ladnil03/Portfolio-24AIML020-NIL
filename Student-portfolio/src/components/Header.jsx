@@ -58,8 +58,8 @@ function Header({ theme, toggleTheme }) {
                         Home
                     </NavLink>
 
-                    <NavLink to="/projects" style={linkStyle}>
-                        Projects
+                    <NavLink to="/tasks" style={linkStyle}>
+                        Tasks
                     </NavLink>
 
                     <NavLink to="/contact" style={linkStyle}>

@@ -1,11 +1,78 @@
-const express = require("express");
-const app = express();
-const PORT = 3000;
+require("dotenv").config();
+const dns = require("dns");
+dns.setServers(["8.8.8.8", "1.1.1.1"]);
 
-let tasks = [];
-let nextId = 1;
+const express = require("express");
+const mongoose = require("mongoose");
+const cors = require("cors");
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+const MONGODB_URI = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/taskdb";
+
+app.use(
+  cors({
+    origin: "*",
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    exposedHeaders: ["Location"],
+  })
+);
 
 app.use(express.json());
+
+// MongoDB Connection
+mongoose
+  .connect(MONGODB_URI)
+  .then(() => {
+    console.log(`Connected successfully to MongoDB at ${MONGODB_URI}`);
+  })
+  .catch((err) => {
+    console.error("MongoDB connection error:", err.message);
+  });
+
+// Task Schema Definition
+const taskSchema = new mongoose.Schema(
+  {
+    title: {
+      type: String,
+      required: [true, "Title is required and must be a non-empty string"],
+    },
+    description: {
+      type: String,
+      default: "",
+    },
+    completed: {
+      type: Boolean,
+      default: false,
+    },
+    priority: {
+      type: String,
+      enum: {
+        values: ["low", "medium", "high"],
+        message: "`{VALUE}` is not a valid priority. Allowed values: 'low', 'medium', 'high'",
+      },
+      default: "medium",
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now,
+    },
+  },
+  {
+    versionKey: false,
+  }
+);
+
+// Pre-save hook that automatically trims whitespace from the title field
+taskSchema.pre("save", function () {
+  if (this.title && typeof this.title === "string") {
+    this.title = this.title.trim();
+  }
+});
+
+// Task Model
+const Task = mongoose.model("Task", taskSchema);
 
 // Request logging middleware
 app.use((req, res, next) => {
@@ -25,194 +92,237 @@ app.use((req, res, next) => {
   next();
 });
 
-// ID Validation middleware
+// ID Validation middleware for Mongoose ObjectId
 function validateTaskId(req, res, next) {
   const { id } = req.params;
-  if (!/^\d+$/.test(id) || Number(id) <= 0) {
+  if (!mongoose.Types.ObjectId.isValid(id)) {
     return res.status(400).json({
       error: "Bad Request",
-      message: `Invalid task ID format: "${id}". ID must be a positive integer.`,
+      message: `Invalid task ID format: "${id}". Must be a valid 24-character hexadecimal ObjectId.`,
     });
   }
-  req.params.id = Number(id);
   next();
 }
 
+// Helper function to format Mongoose validation errors into structured JSON
+function formatValidationError(err) {
+  if (err.name === "ValidationError") {
+    const formattedErrors = {};
+    for (const field in err.errors) {
+      formattedErrors[field] = err.errors[field].message;
+    }
+    return {
+      error: "Validation Error",
+      message: err.message,
+      errors: formattedErrors,
+    };
+  }
+  return {
+    error: "Bad Request",
+    message: err.message,
+  };
+}
+
 // Helper function to attach HATEOAS hypermedia links (Richardson Maturity Level 3)
-function addHypermediaLinks(task, req) {
+function addHypermediaLinks(taskDoc, req) {
   const baseUrl = `${req.protocol}://${req.get("host")}`;
+  const task = taskDoc.toObject ? taskDoc.toObject() : { ...taskDoc };
+  const id = task._id ? task._id.toString() : task.id;
+
   return {
     ...task,
+    id: id,
     _links: {
-      self: { href: `${baseUrl}/tasks/${task.id}`, method: "GET" },
-      update: { href: `${baseUrl}/tasks/${task.id}`, method: "PUT" },
-      partialUpdate: { href: `${baseUrl}/tasks/${task.id}`, method: "PATCH" },
-      delete: { href: `${baseUrl}/tasks/${task.id}`, method: "DELETE" },
+      self: { href: `${baseUrl}/tasks/${id}`, method: "GET" },
+      update: { href: `${baseUrl}/tasks/${id}`, method: "PUT" },
+      partialUpdate: { href: `${baseUrl}/tasks/${id}`, method: "PATCH" },
+      delete: { href: `${baseUrl}/tasks/${id}`, method: "DELETE" },
       collection: { href: `${baseUrl}/tasks`, method: "GET" },
     },
   };
 }
 
-// GET /tasks - Fetch all tasks (supports optional ?status= filtering)
-app.get("/tasks", (req, res) => {
-  const baseUrl = `${req.protocol}://${req.get("host")}`;
-  let result = tasks;
+// GET /tasks - Fetch all tasks (supports optional filtering by status/completed/priority)
+app.get("/tasks", async (req, res, next) => {
+  try {
+    const baseUrl = `${req.protocol}://${req.get("host")}`;
+    const filter = {};
 
-  if (req.query.status) {
-    result = tasks.filter(
-      (t) => t.status.toLowerCase() === req.query.status.toLowerCase()
-    );
+    if (req.query.completed !== undefined) {
+      filter.completed = req.query.completed === "true";
+    } else if (req.query.status !== undefined) {
+      filter.completed = req.query.status.toLowerCase() === "completed";
+    }
+
+    if (req.query.priority) {
+      filter.priority = req.query.priority.toLowerCase();
+    }
+
+    const tasks = await Task.find(filter).sort({ createdAt: -1 });
+    const tasksWithLinks = tasks.map((task) => addHypermediaLinks(task, req));
+
+    res.status(200).json({
+      success: true,
+      count: tasksWithLinks.length,
+      data: tasksWithLinks,
+      _links: {
+        self: { href: `${baseUrl}${req.originalUrl}`, method: "GET" },
+        create: { href: `${baseUrl}/tasks`, method: "POST" },
+      },
+    });
+  } catch (err) {
+    next(err);
   }
-
-  const tasksWithLinks = result.map((task) => addHypermediaLinks(task, req));
-
-  res.status(200).json({
-    success: true,
-    count: tasksWithLinks.length,
-    data: tasksWithLinks,
-    _links: {
-      self: { href: `${baseUrl}${req.originalUrl}`, method: "GET" },
-      create: { href: `${baseUrl}/tasks`, method: "POST" },
-    },
-  });
 });
 
-// GET /tasks/:id - Fetch single task by ID
-app.get("/tasks/:id", validateTaskId, (req, res) => {
-  const task = tasks.find((t) => t.id === req.params.id);
-  if (!task) {
-    return res.status(404).json({
-      error: "Not Found",
-      message: `Task with ID ${req.params.id} not found`,
+// GET /tasks/:id - Fetch single task by ID (returns 404 JSON if not found)
+app.get("/tasks/:id", validateTaskId, async (req, res, next) => {
+  try {
+    const task = await Task.findById(req.params.id);
+    if (!task) {
+      return res.status(404).json({
+        error: "Not Found",
+        message: `Task with ID ${req.params.id} not found`,
+      });
+    }
+    res.status(200).json({
+      success: true,
+      data: addHypermediaLinks(task, req),
     });
+  } catch (err) {
+    next(err);
   }
-  res.status(200).json({ success: true, data: addHypermediaLinks(task, req) });
 });
 
-// POST /tasks - Create a new task (Sets Location header for Level 2 REST compliance)
-app.post("/tasks", (req, res) => {
-  const { title, description, status } = req.body;
+// POST /tasks - Create a new task using Mongoose model
+app.post("/tasks", async (req, res, next) => {
+  try {
+    const { title, description, completed, priority, status } = req.body;
 
-  if (!title || typeof title !== "string" || !title.trim()) {
-    return res.status(400).json({
-      error: "Bad Request",
-      message: "Title is required to create a task and must be a non-empty string",
+    const taskData = {
+      title,
+      description: description !== undefined ? description : "",
+      completed: completed !== undefined ? completed : status === "completed",
+      priority: priority !== undefined ? priority : "medium",
+    };
+
+    const newTask = new Task(taskData);
+    await newTask.save();
+
+    const resourceUrl = `/tasks/${newTask._id}`;
+    res.setHeader("Location", resourceUrl);
+
+    res.status(201).json({
+      success: true,
+      message: "Task created successfully",
+      data: addHypermediaLinks(newTask, req),
     });
+  } catch (err) {
+    if (err.name === "ValidationError") {
+      return res.status(400).json(formatValidationError(err));
+    }
+    next(err);
   }
-
-  const newTask = {
-    id: nextId++,
-    title: title.trim(),
-    description: description || "",
-    status: status || "pending",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  };
-
-  tasks.push(newTask);
-
-  const resourceUrl = `/tasks/${newTask.id}`;
-  res.setHeader("Location", resourceUrl);
-
-  res.status(201).json({
-    success: true,
-    message: "Task created successfully",
-    data: addHypermediaLinks(newTask, req),
-  });
 });
 
 // PUT /tasks/:id - Full resource update/replacement
-app.put("/tasks/:id", validateTaskId, (req, res) => {
-  const index = tasks.findIndex((t) => t.id === req.params.id);
-  if (index === -1) {
-    return res.status(404).json({
-      error: "Not Found",
-      message: `Task with ID ${req.params.id} not found`,
+app.put("/tasks/:id", validateTaskId, async (req, res, next) => {
+  try {
+    const task = await Task.findById(req.params.id);
+    if (!task) {
+      return res.status(404).json({
+        error: "Not Found",
+        message: `Task with ID ${req.params.id} not found`,
+      });
+    }
+
+    const { title, description, completed, priority, status } = req.body;
+
+    task.title = title;
+    task.description = description !== undefined ? description : "";
+    task.completed = completed !== undefined ? completed : status === "completed";
+    task.priority = priority !== undefined ? priority : "medium";
+
+    await task.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Task updated successfully",
+      data: addHypermediaLinks(task, req),
     });
+  } catch (err) {
+    if (err.name === "ValidationError") {
+      return res.status(400).json(formatValidationError(err));
+    }
+    next(err);
   }
-
-  const { title, description, status } = req.body;
-  if (!title || typeof title !== "string" || !title.trim()) {
-    return res.status(400).json({
-      error: "Bad Request",
-      message: "Title is required for full resource update (PUT)",
-    });
-  }
-
-  tasks[index] = {
-    id: req.params.id,
-    title: title.trim(),
-    description: description !== undefined ? description : "",
-    status: status || "pending",
-    createdAt: tasks[index].createdAt,
-    updatedAt: new Date().toISOString(),
-  };
-
-  res.status(200).json({
-    success: true,
-    message: "Task updated successfully",
-    data: addHypermediaLinks(tasks[index], req),
-  });
 });
 
 // PATCH /tasks/:id - Partial resource update
-app.patch("/tasks/:id", validateTaskId, (req, res) => {
-  const index = tasks.findIndex((t) => t.id === req.params.id);
-  if (index === -1) {
-    return res.status(404).json({
-      error: "Not Found",
-      message: `Task with ID ${req.params.id} not found`,
-    });
-  }
-
-  const { title, description, status } = req.body;
-
-  if (title !== undefined) {
-    if (typeof title !== "string" || !title.trim()) {
-      return res.status(400).json({
-        error: "Bad Request",
-        message: "Title must be a non-empty string",
+app.patch("/tasks/:id", validateTaskId, async (req, res, next) => {
+  try {
+    const task = await Task.findById(req.params.id);
+    if (!task) {
+      return res.status(404).json({
+        error: "Not Found",
+        message: `Task with ID ${req.params.id} not found`,
       });
     }
-    tasks[index].title = title.trim();
+
+    const { title, description, completed, priority, status } = req.body;
+
+    if (title !== undefined) {
+      task.title = title;
+    }
+    if (description !== undefined) {
+      task.description = description;
+    }
+    if (completed !== undefined) {
+      task.completed = completed;
+    } else if (status !== undefined) {
+      task.completed = status === "completed";
+    }
+    if (priority !== undefined) {
+      task.priority = priority;
+    }
+
+    await task.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Task partially updated successfully",
+      data: addHypermediaLinks(task, req),
+    });
+  } catch (err) {
+    if (err.name === "ValidationError") {
+      return res.status(400).json(formatValidationError(err));
+    }
+    next(err);
   }
-
-  if (description !== undefined) {
-    tasks[index].description = description;
-  }
-
-  if (status !== undefined) {
-    tasks[index].status = status;
-  }
-
-  tasks[index].updatedAt = new Date().toISOString();
-
-  res.status(200).json({
-    success: true,
-    message: "Task partially updated successfully",
-    data: addHypermediaLinks(tasks[index], req),
-  });
 });
 
 // DELETE /tasks/:id - Remove task
-app.delete("/tasks/:id", validateTaskId, (req, res) => {
-  const index = tasks.findIndex((t) => t.id === req.params.id);
-  if (index === -1) {
-    return res.status(404).json({
-      error: "Not Found",
-      message: `Task with ID ${req.params.id} not found`,
-    });
-  }
+app.delete("/tasks/:id", validateTaskId, async (req, res, next) => {
+  try {
+    const deletedTask = await Task.findByIdAndDelete(req.params.id);
+    if (!deletedTask) {
+      return res.status(404).json({
+        error: "Not Found",
+        message: `Task with ID ${req.params.id} not found`,
+      });
+    }
 
-  const [deletedTask] = tasks.splice(index, 1);
-  res.status(200).json({
-    success: true,
-    message: `Task with ID ${req.params.id} deleted successfully`,
-    data: addHypermediaLinks(deletedTask, req),
-  });
+    res.status(200).json({
+      success: true,
+      message: `Task with ID ${req.params.id} deleted successfully`,
+      data: addHypermediaLinks(deletedTask, req),
+    });
+  } catch (err) {
+    next(err);
+  }
 });
 
-// 404 Route handler
+// 404 Route handler for undefined routes
 app.use((req, res) => {
   res.status(404).json({
     error: "Not Found",
@@ -222,6 +332,9 @@ app.use((req, res) => {
 
 // Global error handler
 app.use((err, req, res, next) => {
+  if (err.name === "ValidationError") {
+    return res.status(400).json(formatValidationError(err));
+  }
   console.error(`[ERROR] ${new Date().toISOString()} - ${err.stack || err.message}`);
   res.status(err.status || 500).json({
     error: "Internal Server Error",
