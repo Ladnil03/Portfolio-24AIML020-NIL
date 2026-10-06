@@ -3,9 +3,10 @@ import React, { useEffect } from "react";
 function Toast({ toast, onClose }) {
   useEffect(() => {
     if (!toast) return;
+    const duration = toast.duration || (toast.type === "error" ? 5000 : 3500);
     const timer = setTimeout(() => {
       onClose();
-    }, 4000);
+    }, duration);
     return () => clearTimeout(timer);
   }, [toast, onClose]);
 
@@ -13,43 +14,56 @@ function Toast({ toast, onClose }) {
 
   const isError = toast.type === "error";
   const isSuccess = toast.type === "success";
+  const isInfo = toast.type === "info";
 
-  const borderColor = isError ? "#ef4444" : isSuccess ? "#22c55e" : "#3b82f6";
+  const borderColor = isError
+    ? "#ef4444"
+    : isSuccess
+    ? "#22c55e"
+    : isInfo
+    ? "#3b82f6"
+    : "#f59e0b";
+
   const bgColor = isError
-    ? "rgba(239, 68, 68, 0.95)"
+    ? "rgba(220, 38, 38, 0.95)"
     : isSuccess
     ? "rgba(22, 163, 74, 0.95)"
-    : "rgba(37, 99, 235, 0.95)";
-  const icon = isError ? "✕" : isSuccess ? "✓" : "ℹ";
+    : isInfo
+    ? "rgba(37, 99, 235, 0.95)"
+    : "rgba(217, 119, 6, 0.95)";
+
+  const icon = isError ? "✕" : isSuccess ? "✓" : isInfo ? "⏳" : "ℹ";
 
   return (
     <div
       role="alert"
+      aria-live="polite"
       style={{
         position: "fixed",
-        bottom: "24px",
+        top: "24px",
         right: "24px",
         zIndex: 9999,
         backgroundColor: bgColor,
         color: "#ffffff",
-        padding: "14px 20px",
+        padding: "14px 18px",
         borderRadius: "12px",
-        boxShadow: "0 10px 25px rgba(0, 0, 0, 0.3)",
+        boxShadow: "0 10px 30px rgba(0, 0, 0, 0.35)",
         border: `1px solid ${borderColor}`,
         display: "flex",
         alignItems: "center",
         gap: "12px",
-        maxWidth: "420px",
+        maxWidth: "440px",
+        minWidth: "280px",
         animation: "slideIn 0.3s ease-out",
         backdropFilter: "blur(8px)",
       }}
     >
       <div
         style={{
-          width: "24px",
-          height: "24px",
+          width: "26px",
+          height: "26px",
           borderRadius: "50%",
-          backgroundColor: "rgba(255, 255, 255, 0.25)",
+          backgroundColor: "rgba(255, 255, 255, 0.22)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -60,9 +74,19 @@ function Toast({ toast, onClose }) {
       >
         {icon}
       </div>
-      <div style={{ flexGrow: 1, fontSize: "15px", fontWeight: "500", lineHeight: "1.4" }}>
+
+      <div
+        style={{
+          flexGrow: 1,
+          fontSize: "14px",
+          fontWeight: "600",
+          lineHeight: "1.4",
+          textAlign: "left",
+        }}
+      >
         {toast.message}
       </div>
+
       <button
         onClick={onClose}
         aria-label="Close notification"
@@ -71,10 +95,11 @@ function Toast({ toast, onClose }) {
           border: "none",
           color: "#ffffff",
           cursor: "pointer",
-          fontSize: "18px",
+          fontSize: "20px",
           padding: "0 4px",
           lineHeight: "1",
-          opacity: 0.8,
+          opacity: 0.85,
+          transition: "opacity 0.2s",
         }}
       >
         ×

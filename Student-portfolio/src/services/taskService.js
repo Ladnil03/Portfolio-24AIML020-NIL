@@ -1,18 +1,29 @@
 /**
  * Task API Service
  * Handles all HTTP communication with the Node.js + Express + MongoDB backend.
+ * All requests include JWT authentication headers.
  */
+
+import { authHeaders, removeToken } from "./authService";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
 /**
- * Helper to process JSON response or throw formatted Error
+ * Helper to process JSON response or throw formatted Error.
+ * Redirects to /login on 401 (expired/invalid token).
  */
 async function handleResponse(response) {
   const isJson = response.headers.get("content-type")?.includes("application/json");
   const data = isJson ? await response.json().catch(() => null) : null;
 
   if (!response.ok) {
+    // Token expired or invalid — redirect to login
+    if (response.status === 401) {
+      removeToken();
+      window.location.href = "/login";
+      return null;
+    }
+
     let errorMessage = `Request failed with status ${response.status}`;
     if (data) {
       if (data.errors) {
@@ -54,7 +65,9 @@ export async function fetchTasks(filters = {}) {
   }
 
   const queryString = params.toString() ? `?${params.toString()}` : "";
-  const response = await fetch(`${API_BASE_URL}/tasks${queryString}`);
+  const response = await fetch(`${API_BASE_URL}/tasks${queryString}`, {
+    headers: authHeaders(),
+  });
   const result = await handleResponse(response);
   return result?.data || [];
 }
@@ -65,7 +78,9 @@ export async function fetchTasks(filters = {}) {
  * @returns {Promise<Object>} Task object
  */
 export async function fetchTaskById(id) {
-  const response = await fetch(`${API_BASE_URL}/tasks/${id}`);
+  const response = await fetch(`${API_BASE_URL}/tasks/${id}`, {
+    headers: authHeaders(),
+  });
   const result = await handleResponse(response);
   return result?.data;
 }
@@ -78,9 +93,7 @@ export async function fetchTaskById(id) {
 export async function createTask(taskData) {
   const response = await fetch(`${API_BASE_URL}/tasks`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: authHeaders(),
     body: JSON.stringify(taskData),
   });
   const result = await handleResponse(response);
@@ -96,9 +109,7 @@ export async function createTask(taskData) {
 export async function updateTask(id, taskData) {
   const response = await fetch(`${API_BASE_URL}/tasks/${id}`, {
     method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: authHeaders(),
     body: JSON.stringify(taskData),
   });
   const result = await handleResponse(response);
@@ -114,9 +125,7 @@ export async function updateTask(id, taskData) {
 export async function patchTask(id, partialData) {
   const response = await fetch(`${API_BASE_URL}/tasks/${id}`, {
     method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: authHeaders(),
     body: JSON.stringify(partialData),
   });
   const result = await handleResponse(response);
@@ -131,6 +140,7 @@ export async function patchTask(id, partialData) {
 export async function deleteTask(id) {
   const response = await fetch(`${API_BASE_URL}/tasks/${id}`, {
     method: "DELETE",
+    headers: authHeaders(),
   });
   const result = await handleResponse(response);
   return result?.data;

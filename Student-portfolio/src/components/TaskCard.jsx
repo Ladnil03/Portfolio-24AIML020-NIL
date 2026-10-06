@@ -10,6 +10,7 @@ function TaskCard({
 }) {
   const id = task._id || task.id;
   const isCompleted = Boolean(task.completed);
+  const isOptimistic = Boolean(task.isOptimistic);
   const priority = (task.priority || "medium").toLowerCase();
 
   const priorityStyles = {
@@ -50,7 +51,9 @@ function TaskCard({
         color: "var(--text-h)",
         padding: "22px",
         borderRadius: "16px",
-        border: isCompleted
+        border: isOptimistic
+          ? "2px dashed #3b82f6"
+          : isCompleted
           ? "2px solid rgba(34, 197, 94, 0.4)"
           : "2px solid var(--border)",
         boxShadow: "var(--shadow)",
@@ -59,7 +62,7 @@ function TaskCard({
         justifyContent: "space-between",
         textAlign: "left",
         position: "relative",
-        opacity: isDeleting ? 0.5 : 1,
+        opacity: isDeleting ? 0.45 : isOptimistic ? 0.85 : 1,
         transition: "all 0.25s ease",
         boxSizing: "border-box",
       }}
@@ -76,24 +79,45 @@ function TaskCard({
             flexWrap: "wrap",
           }}
         >
-          <span
-            style={{
-              fontSize: "12px",
-              fontWeight: "700",
-              textTransform: "uppercase",
-              letterSpacing: "0.5px",
-              backgroundColor: currentPriority.bg,
-              color: currentPriority.color,
-              border: `1px solid ${currentPriority.border}`,
-              padding: "3px 10px",
-              borderRadius: "12px",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "4px",
-            }}
-          >
-            {currentPriority.label}
-          </span>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <span
+              style={{
+                fontSize: "12px",
+                fontWeight: "700",
+                textTransform: "uppercase",
+                letterSpacing: "0.5px",
+                backgroundColor: currentPriority.bg,
+                color: currentPriority.color,
+                border: `1px solid ${currentPriority.border}`,
+                padding: "3px 10px",
+                borderRadius: "12px",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "4px",
+              }}
+            >
+              {currentPriority.label}
+            </span>
+
+            {isOptimistic && (
+              <span
+                style={{
+                  fontSize: "11px",
+                  fontWeight: "700",
+                  backgroundColor: "rgba(59, 130, 246, 0.15)",
+                  color: "#3b82f6",
+                  border: "1px solid rgba(59, 130, 246, 0.4)",
+                  padding: "2px 8px",
+                  borderRadius: "10px",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "4px",
+                }}
+              >
+                ⏳ Syncing...
+              </span>
+            )}
+          </div>
 
           <span
             style={{
@@ -131,7 +155,7 @@ function TaskCard({
             role="checkbox"
             aria-checked={isCompleted}
             aria-label={`Mark task "${task.title}" as ${isCompleted ? "pending" : "completed"}`}
-            disabled={isUpdating || isDeleting}
+            disabled={isUpdating || isDeleting || isOptimistic}
             onClick={() => onToggleStatus(task)}
             style={{
               width: "22px",
@@ -143,7 +167,7 @@ function TaskCard({
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              cursor: isUpdating || isDeleting ? "not-allowed" : "pointer",
+              cursor: isUpdating || isDeleting || isOptimistic ? "not-allowed" : "pointer",
               fontSize: "13px",
               fontWeight: "bold",
               marginTop: "2px",
@@ -226,7 +250,7 @@ function TaskCard({
         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
           <button
             onClick={() => onEdit(task)}
-            disabled={isUpdating || isDeleting}
+            disabled={isUpdating || isDeleting || isOptimistic}
             aria-label={`Edit task ${task.title}`}
             style={{
               backgroundColor: "var(--code-bg)",
@@ -236,7 +260,7 @@ function TaskCard({
               padding: "6px 12px",
               fontSize: "13px",
               fontWeight: "600",
-              cursor: isUpdating || isDeleting ? "not-allowed" : "pointer",
+              cursor: isUpdating || isDeleting || isOptimistic ? "not-allowed" : "pointer",
               display: "inline-flex",
               alignItems: "center",
               gap: "4px",
@@ -248,7 +272,7 @@ function TaskCard({
 
           <button
             onClick={() => onDelete(task)}
-            disabled={isUpdating || isDeleting}
+            disabled={isUpdating || isDeleting || isOptimistic}
             aria-label={`Delete task ${task.title}`}
             style={{
               backgroundColor: "rgba(239, 68, 68, 0.1)",
@@ -258,7 +282,7 @@ function TaskCard({
               padding: "6px 12px",
               fontSize: "13px",
               fontWeight: "600",
-              cursor: isUpdating || isDeleting ? "not-allowed" : "pointer",
+              cursor: isUpdating || isDeleting || isOptimistic ? "not-allowed" : "pointer",
               display: "inline-flex",
               alignItems: "center",
               gap: "4px",

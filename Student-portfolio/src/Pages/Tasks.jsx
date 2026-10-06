@@ -55,35 +55,71 @@ function Tasks() {
     loadTasks();
   }, [loadTasks]);
 
-  // Handle Create or Update submission from Modal
+  // Handle Create or Update submission from Modal (with Optimistic UI for Create)
   const handleModalSubmit = async (formData) => {
-    setModalLoading(true);
-    setModalError(null);
-
-    try {
-      if (editingTask) {
+    if (editingTask) {
+      // Edit Mode (PUT)
+      setModalLoading(true);
+      setModalError(null);
+      try {
         const id = editingTask._id || editingTask.id;
         const updatedTask = await taskService.updateTask(id, formData);
         setTasks((prev) =>
           prev.map((t) => ((t._id || t.id) === id ? updatedTask : t))
         );
-        showToast("Task updated successfully in MongoDB!", "success");
-      } else {
-        const createdTask = await taskService.createTask(formData);
-        setTasks((prev) => [createdTask, ...prev]);
-        showToast("Task created and saved to MongoDB!", "success");
+        showToast("✓ Task updated successfully in MongoDB!", "success");
+        setIsModalOpen(false);
+        setEditingTask(null);
+      } catch (err) {
+        setModalError(err.message || "Operation failed. Please try again.");
+        showToast(`✕ Failed to update task: ${err.message || "Error"}`, "error");
+      } finally {
+        setModalLoading(false);
       }
+    } else {
+      // Optimistic Create Mode
+      const tempId = `temp-${Date.now()}`;
+      const optimisticTask = {
+        _id: tempId,
+        id: tempId,
+        title: formData.title,
+        description: formData.description || "",
+        priority: formData.priority || "medium",
+        completed: Boolean(formData.completed),
+        createdAt: new Date().toISOString(),
+        isOptimistic: true, // Show syncing state in UI immediately
+      };
+
+      // 1. Instantly display task in the list before server confirms
+      setTasks((prev) => [optimisticTask, ...prev]);
+
+      // 2. Immediately close modal
       setIsModalOpen(false);
       setEditingTask(null);
-    } catch (err) {
-      setModalError(err.message || "Operation failed. Please try again.");
-      showToast(err.message || "Failed to save task", "error");
-    } finally {
-      setModalLoading(false);
+
+      // 3. Show notification
+      showToast("⏳ Adding task (syncing with MongoDB...)", "info");
+
+      // 4. Send API request to persist in MongoDB
+      try {
+        const createdTask = await taskService.createTask(formData);
+        // Replace optimistic placeholder with real MongoDB doc
+        setTasks((prev) =>
+          prev.map((t) => (t._id === tempId ? createdTask : t))
+        );
+        showToast("✓ Task created and persisted in MongoDB!", "success");
+      } catch (err) {
+        // Rollback optimistic task on failure
+        setTasks((prev) => prev.filter((t) => t._id !== tempId));
+        showToast(
+          `✕ Failed to save task: ${err.message || "Network error"}`,
+          "error"
+        );
+      }
     }
   };
 
-  // Quick toggle status (completed / pending)
+  // Quick toggle status (completed / pending) with Toast feedback
   const handleToggleStatus = async (task) => {
     const id = task._id || task.id;
     const newStatus = !task.completed;
@@ -97,11 +133,11 @@ function Tasks() {
         prev.map((t) => ((t._id || t.id) === id ? updatedTask : t))
       );
       showToast(
-        newStatus ? "Task marked as completed!" : "Task marked as pending.",
+        newStatus ? "✓ Task marked as completed!" : "✓ Task marked as pending.",
         "success"
       );
     } catch (err) {
-      showToast(err.message || "Failed to update task status", "error");
+      showToast(`✕ Failed to update task status: ${err.message || "Error"}`, "error");
     } finally {
       setUpdatingTaskId(null);
     }
@@ -121,7 +157,7 @@ function Tasks() {
     setIsModalOpen(true);
   };
 
-  // Confirm and Execute Task Deletion
+  // Confirm and Execute Task Deletion with Toast feedback
   const handleConfirmDelete = async () => {
     if (!taskToDelete) return;
     const id = taskToDelete._id || taskToDelete.id;
@@ -130,10 +166,10 @@ function Tasks() {
     try {
       await taskService.deleteTask(id);
       setTasks((prev) => prev.filter((t) => (t._id || t.id) !== id));
-      showToast("Task deleted successfully from MongoDB!", "success");
+      showToast("✓ Task permanently deleted from MongoDB!", "success");
       setTaskToDelete(null);
     } catch (err) {
-      showToast(err.message || "Failed to delete task", "error");
+      showToast(`✕ Failed to delete task: ${err.message || "Error"}`, "error");
     } finally {
       setDeletingTaskId(null);
     }
@@ -479,6 +515,11 @@ function Tasks() {
             padding: "20px",
             zIndex: 2000,
           }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget && deletingTaskId === null) {
+              setTaskToDelete(null);
+            }
+          }}
         >
           <div
             style={{
@@ -487,11 +528,12 @@ function Tasks() {
               border: "2px solid #ef4444",
               boxShadow: "0 20px 40px rgba(0, 0, 0, 0.3)",
               width: "100%",
-              maxWidth: "440px",
+              maxWidth: "450px",
               padding: "28px",
               boxSizing: "border-box",
               color: "var(--text-h)",
               textAlign: "center",
+              animation: "fadeIn 0.2s ease-out",
             }}
           >
             <div
@@ -537,7 +579,7 @@ function Tasks() {
                   color: "var(--text-h)",
                   fontSize: "14px",
                   fontWeight: "600",
-                  cursor: "pointer",
+                  cursor: deletingTaskId !== null ? "not-allowed" : "pointer",
                 }}
               >
                 Cancel
@@ -573,7 +615,7 @@ function Tasks() {
                     }}
                   />
                 )}
-                {deletingTaskId !== null ? "Deleting..." : "Yes, Delete"}
+                {deletingTaskId !== null ? "Deleting..." : "Yes, Delete Task"}
               </button>
             </div>
           </div>
