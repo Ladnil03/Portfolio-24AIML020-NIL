@@ -1,4 +1,3 @@
-import React from "react";
 
 function RepoList({ data }) {
   if (!data || data.length === 0) {

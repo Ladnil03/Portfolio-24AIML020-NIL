@@ -3,6 +3,12 @@ const mongoose = require("mongoose");
 const Task = require("../models/Task");
 const auth = require("../middleware/auth");
 const { validateTask } = require("../middleware/validate");
+const {
+  cache,
+  recordHit,
+  recordMiss,
+  invalidateTasksCache,
+} = require("../utils/cache");
 
 const router = express.Router();
 
@@ -58,15 +64,42 @@ function addHypermediaLinks(taskDoc, req) {
   };
 }
 
+// Helper to build canonical cache key for tasks query
+function getTasksCacheKey(userId, query) {
+  const queryStr = Object.keys(query)
+    .sort()
+    .map((k) => `${k}=${query[k]}`)
+    .join("&");
+  return queryStr ? `tasks:${userId || "anon"}:${queryStr}` : `tasks:${userId || "anon"}:all`;
+}
+
+// Helper for single task cache key
+function getSingleTaskCacheKey(taskId) {
+  return `task:${taskId}`;
+}
+
 // ── All task routes are protected by auth middleware ──────────────────
 router.use(auth);
 
-// GET /tasks - Fetch all tasks (supports optional filtering by status/completed/priority)
+// GET /tasks - Fetch all tasks (cached in-memory for 60s)
 router.get("/", async (req, res, next) => {
   try {
     const baseUrl = `${req.protocol}://${req.get("host")}`;
-    const filter = {};
+    const userId = req.user ? req.user.id : "user";
+    const cacheKey = getTasksCacheKey(userId, req.query);
 
+    // Check in-memory cache
+    const cachedResponse = cache.get(cacheKey);
+    if (cachedResponse) {
+      recordHit();
+      res.setHeader("X-Cache", "HIT");
+      return res.status(200).json(cachedResponse);
+    }
+
+    recordMiss();
+    res.setHeader("X-Cache", "MISS");
+
+    const filter = {};
     if (req.query.completed !== undefined) {
       filter.completed = req.query.completed === "true";
     } else if (req.query.status !== undefined) {
@@ -80,7 +113,7 @@ router.get("/", async (req, res, next) => {
     const tasks = await Task.find(filter).sort({ createdAt: -1 });
     const tasksWithLinks = tasks.map((task) => addHypermediaLinks(task, req));
 
-    res.status(200).json({
+    const responseData = {
       success: true,
       count: tasksWithLinks.length,
       data: tasksWithLinks,
@@ -88,32 +121,57 @@ router.get("/", async (req, res, next) => {
         self: { href: `${baseUrl}${req.originalUrl}`, method: "GET" },
         create: { href: `${baseUrl}/tasks`, method: "POST" },
       },
-    });
+    };
+
+    // Store in cache for 60 seconds (default TTL)
+    cache.set(cacheKey, responseData, 60);
+
+    res.status(200).json(responseData);
   } catch (err) {
     next(err);
   }
 });
 
-// GET /tasks/:id - Fetch single task by ID (returns 404 JSON if not found)
+// GET /tasks/:id - Fetch single task by ID (cached separately in-memory)
 router.get("/:id", validateTaskId, async (req, res, next) => {
   try {
-    const task = await Task.findById(req.params.id);
+    const { id } = req.params;
+    const cacheKey = getSingleTaskCacheKey(id);
+
+    // Check in-memory single task cache
+    const cachedTaskResponse = cache.get(cacheKey);
+    if (cachedTaskResponse) {
+      recordHit();
+      res.setHeader("X-Cache", "HIT");
+      return res.status(200).json(cachedTaskResponse);
+    }
+
+    recordMiss();
+    res.setHeader("X-Cache", "MISS");
+
+    const task = await Task.findById(id);
     if (!task) {
       return res.status(404).json({
         error: "Not Found",
-        message: `Task with ID ${req.params.id} not found`,
+        message: `Task with ID ${id} not found`,
       });
     }
-    res.status(200).json({
+
+    const responseData = {
       success: true,
       data: addHypermediaLinks(task, req),
-    });
+    };
+
+    // Cache single task for 60 seconds
+    cache.set(cacheKey, responseData, 60);
+
+    res.status(200).json(responseData);
   } catch (err) {
     next(err);
   }
 });
 
-// POST /tasks - Create a new task using Mongoose model
+// POST /tasks - Create a new task (Invalidates cache)
 router.post("/", validateTask, async (req, res, next) => {
   try {
     const { title, description, completed, priority, status } = req.body;
@@ -127,6 +185,9 @@ router.post("/", validateTask, async (req, res, next) => {
 
     const newTask = new Task(taskData);
     await newTask.save();
+
+    // Cache Invalidation on write operation
+    invalidateTasksCache(newTask._id.toString());
 
     const resourceUrl = `/tasks/${newTask._id}`;
     res.setHeader("Location", resourceUrl);
@@ -144,7 +205,7 @@ router.post("/", validateTask, async (req, res, next) => {
   }
 });
 
-// PUT /tasks/:id - Full resource update/replacement
+// PUT /tasks/:id - Full resource update/replacement (Invalidates cache)
 router.put("/:id", validateTaskId, validateTask, async (req, res, next) => {
   try {
     const task = await Task.findById(req.params.id);
@@ -164,6 +225,9 @@ router.put("/:id", validateTaskId, validateTask, async (req, res, next) => {
 
     await task.save();
 
+    // Invalidate list cache and single task cache
+    invalidateTasksCache(req.params.id);
+
     res.status(200).json({
       success: true,
       message: "Task updated successfully",
@@ -177,7 +241,7 @@ router.put("/:id", validateTaskId, validateTask, async (req, res, next) => {
   }
 });
 
-// PATCH /tasks/:id - Partial resource update
+// PATCH /tasks/:id - Partial resource update (Invalidates cache)
 router.patch("/:id", validateTaskId, async (req, res, next) => {
   try {
     const task = await Task.findById(req.params.id);
@@ -207,6 +271,9 @@ router.patch("/:id", validateTaskId, async (req, res, next) => {
 
     await task.save();
 
+    // Invalidate list cache and single task cache
+    invalidateTasksCache(req.params.id);
+
     res.status(200).json({
       success: true,
       message: "Task partially updated successfully",
@@ -220,7 +287,7 @@ router.patch("/:id", validateTaskId, async (req, res, next) => {
   }
 });
 
-// DELETE /tasks/:id - Remove task
+// DELETE /tasks/:id - Remove task (Invalidates cache)
 router.delete("/:id", validateTaskId, async (req, res, next) => {
   try {
     const deletedTask = await Task.findByIdAndDelete(req.params.id);
@@ -230,6 +297,9 @@ router.delete("/:id", validateTaskId, async (req, res, next) => {
         message: `Task with ID ${req.params.id} not found`,
       });
     }
+
+    // Invalidate list cache and single task cache
+    invalidateTasksCache(req.params.id);
 
     res.status(200).json({
       success: true,

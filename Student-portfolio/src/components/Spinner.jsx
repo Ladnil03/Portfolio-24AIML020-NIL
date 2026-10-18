@@ -1,54 +1,34 @@
-import React from "react";
+import { cn } from "cn";
 
+/** Square brutalist spinner — reads as part of the system, not a stock loader. */
 function Spinner({ message = "Loading tasks from MongoDB...", size = "default" }) {
   const isSmall = size === "small";
 
   if (isSmall) {
     return (
-      <div
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          gap: "8px",
-        }}
-      >
-        <div
-          style={{
-            border: "2px solid rgba(34, 197, 94, 0.2)",
-            borderTop: "2px solid #22c55e",
-            borderRadius: "50%",
-            width: "16px",
-            height: "16px",
-            animation: "spin 0.8s linear infinite",
-          }}
+      <span className="inline-flex items-center gap-3">
+        <span
+          aria-hidden="true"
+          className="size-4 animate-spin border-2 border-ink border-t-coral"
         />
-        {message && <span style={{ fontSize: "14px", color: "var(--text)" }}>{message}</span>}
-      </div>
+        {message && <span className="label-mono text-ink/70">{message}</span>}
+      </span>
     );
   }
 
   return (
     <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "60px 20px",
-        minHeight: "300px",
-      }}
+      role="status"
+      className="flex min-h-[260px] flex-col items-center justify-center gap-5 p-10"
     >
-      <div className="spinner-loader"></div>
-      <p
-        style={{
-          color: "var(--text-h)",
-          fontSize: "18px",
-          fontWeight: "600",
-          marginTop: "10px",
-        }}
-      >
-        {message}
-      </p>
+      <span
+        aria-hidden="true"
+        className={cn(
+          "size-14 animate-spin border-[3px] border-ink",
+          "border-t-coral border-r-coral"
+        )}
+      />
+      <p className="label-mono text-ink/70">{message}</p>
     </div>
   );
 }

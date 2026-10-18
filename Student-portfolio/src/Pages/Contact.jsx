@@ -1,166 +1,79 @@
-import React, { useState } from "react";
+import PageHeader from "../components/PageHeader";
+import ContactForm from "../components/ContactForm";
+import { Button } from "../components/ui/button";
+import { Arrow, CornerMarks, Sticker } from "../components/Decor";
+import { profile } from "../data/profile";
 
 function Contact() {
-  const [formData, setFormData] = useState({
-    name: "",
-    email: ""
-  });
-  const [message, setMessage] = useState("");
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleFormSubmit = (e) => {
-    e.preventDefault();
-    alert(`Thank you, ${formData.name}! Your message has been sent.\n\nPreview:\n${message}`);
-    setFormData({ name: "", email: "" });
-    setMessage("");
-  };
-
   return (
-    <section style={{ padding: "50px 20px", maxWidth: "650px", margin: "0 auto", width: "100%", boxSizing: "border-box" }}>
-      <div
-        style={{
-          backgroundColor: "var(--card-bg)",
-          color: "var(--text-h)",
-          padding: "40px 35px",
-          borderRadius: "20px",
-          border: "2px solid #22c55e",
-          boxShadow: "var(--shadow)",
-          boxSizing: "border-box"
-        }}
-      >
-        <h1 style={{ color: "#22c55e", marginTop: 0, marginBottom: "25px", fontSize: "32px", textAlign: "center", fontWeight: "700" }}>
-          Contact Me
-        </h1>
+    <>
+      <PageHeader
+        index="07"
+        label="Contact"
+        title="Let's Talk &amp; Build"
+        lede="Questions, internships, freelance work, or collaboration on machine learning and full-stack systems — all welcome."
+      />
 
-        <form onSubmit={handleFormSubmit}>
-          <div style={{ marginBottom: "20px", textAlign: "left" }}>
-            <label style={{ display: "block", marginBottom: "8px", fontWeight: "600", fontSize: "16px", color: "var(--text-h)" }}>
-              Name
-            </label>
-            <input
-              type="text"
-              name="name"
-              value={formData.name}
-              onChange={handleInputChange}
-              required
-              placeholder="Enter your name"
-              style={{
-                width: "100%",
-                padding: "12px 16px",
-                borderRadius: "8px",
-                border: "1px solid var(--border)",
-                backgroundColor: "var(--code-bg)",
-                color: "var(--text-h)",
-                fontSize: "16px",
-                boxSizing: "border-box",
-                outline: "none"
-              }}
-            />
-          </div>
-
-          <div style={{ marginBottom: "20px", textAlign: "left" }}>
-            <label style={{ display: "block", marginBottom: "8px", fontWeight: "600", fontSize: "16px", color: "var(--text-h)" }}>
-              Email
-            </label>
-            <input
-              type="email"
-              name="email"
-              value={formData.email}
-              onChange={handleInputChange}
-              required
-              placeholder="Enter your email"
-              style={{
-                width: "100%",
-                padding: "12px 16px",
-                borderRadius: "8px",
-                border: "1px solid var(--border)",
-                backgroundColor: "var(--code-bg)",
-                color: "var(--text-h)",
-                fontSize: "16px",
-                boxSizing: "border-box",
-                outline: "none"
-              }}
-            />
-          </div>
-
-          <div style={{ marginBottom: "20px", textAlign: "left" }}>
-            <label style={{ display: "block", marginBottom: "8px", fontWeight: "600", fontSize: "16px", color: "var(--text-h)" }}>
-              Message
-            </label>
-            <textarea
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              required
-              maxLength={250}
-              rows={5}
-              placeholder="Write your message..."
-              style={{
-                width: "100%",
-                padding: "12px 16px",
-                borderRadius: "8px",
-                border: "1px solid var(--border)",
-                backgroundColor: "var(--code-bg)",
-                color: "var(--text-h)",
-                fontSize: "16px",
-                boxSizing: "border-box",
-                resize: "vertical",
-                outline: "none"
-              }}
-            />
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                marginTop: "6px",
-                fontSize: "14px",
-                color: message.length >= 250 ? "#ef4444" : "var(--text)"
-              }}
-            >
-              <span>Characters: {message.length} / 250</span>
+      <section className="bg-paper">
+        <div className="mx-auto grid w-full max-w-[1400px] grid-cols-1 gap-8 px-5 py-12 sm:px-8 lg:grid-cols-12 lg:px-12 lg:py-16">
+          <div className="relative border-[3px] border-ink bg-paper p-6 shadow-brutal-xl sm:p-9 lg:col-span-7">
+            <CornerMarks />
+            <div className="mb-6 flex items-center justify-between border-b-2 border-ink pb-4">
+              <h2 className="text-card-title text-ink">Send a message</h2>
+              <Sticker tone="yellow" rotate="-2deg" className="text-[0.625rem]">
+                DIRECT BUFFER
+              </Sticker>
             </div>
+            <ContactForm />
           </div>
 
-          <button
-            type="submit"
-            style={{
-              width: "100%",
-              backgroundColor: "#22c55e",
-              color: "#ffffff",
-              border: "none",
-              padding: "14px",
-              fontSize: "18px",
-              fontWeight: "600",
-              borderRadius: "8px",
-              cursor: "pointer",
-              transition: "all 0.3s ease",
-              boxShadow: "0 4px 14px rgba(34, 197, 94, 0.3)"
-            }}
-          >
-            Send Message
-          </button>
-        </form>
+          <aside className="flex flex-col gap-6 lg:col-span-5">
+            <div className="group relative border-[3px] border-ink bg-coral p-7 shadow-brutal brutal-press transition-all">
+              <CornerMarks />
+              <p className="label-mono font-bold text-xs text-ink">PRIMARY ROUTE</p>
+              <h2 className="text-card-title mt-2 text-ink">GitHub Direct</h2>
+              <p className="mt-3 text-sm sm:text-base leading-relaxed text-ink/90 font-medium">
+                Issues, pull requests or direct repository interactions — fastest response time.
+              </p>
+              <Button asChild variant="outline" className="mt-6 shadow-brutal-xs">
+                <a href={profile.github} target="_blank" rel="noopener noreferrer">
+                  github.com/{profile.handle} <Arrow />
+                </a>
+              </Button>
+            </div>
 
-        {message && (
-          <div
-            style={{
-              marginTop: "25px",
-              padding: "16px",
-              borderRadius: "10px",
-              backgroundColor: "var(--code-bg)",
-              borderLeft: "5px solid #22c55e",
-              textAlign: "left"
-            }}
-          >
-            <strong style={{ color: "#22c55e", display: "block", marginBottom: "6px" }}>Live Preview:</strong>
-            <p style={{ margin: 0, whiteSpace: "pre-wrap", color: "var(--text-h)", fontSize: "15px" }}>{message}</p>
-          </div>
-        )}
-      </div>
-    </section>
+            <div className="group relative border-[3px] border-ink bg-sky p-7 shadow-brutal brutal-press transition-all">
+              <CornerMarks />
+              <p className="label-mono font-bold text-xs text-ink">LOOKING FOR</p>
+              <h3 className="font-display text-2xl uppercase mt-2 text-ink">Opportunities</h3>
+              <ul className="mt-4 flex flex-col gap-2.5">
+                {[
+                  "AI / ML Internships",
+                  "Full-Stack Web Builds",
+                  "Open Source Contributions",
+                  "Competitive Coding Collaboration",
+                ].map((item) => (
+                  <li key={item} className="label-mono flex items-center gap-2.5 text-xs font-bold text-ink">
+                    <span aria-hidden="true" className="font-display text-base text-coral">
+                      +
+                    </span>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="border-[3px] border-ink bg-yellow p-6 shadow-brutal">
+              <p className="label-mono text-xs font-bold text-ink">LOCATION</p>
+              <p className="font-display text-xl uppercase mt-1 text-ink">Gujarat, India</p>
+              <p className="label-mono text-[0.625rem] text-ink/75 mt-1">
+                COURSEWORK CODE: 24AIML020 &bull; OPEN TO REMOTE / HYBRID
+              </p>
+            </div>
+          </aside>
+        </div>
+      </section>
+    </>
   );
 }
 

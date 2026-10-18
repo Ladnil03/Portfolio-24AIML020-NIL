@@ -1,5 +1,6 @@
-import React from "react";
 import TaskCard from "./TaskCard";
+import { Button } from "@/components/ui/button";
+import { Arrow } from "@/components/Decor";
 
 function TaskList({
   tasks = [],
@@ -12,83 +13,41 @@ function TaskList({
 }) {
   if (!tasks || tasks.length === 0) {
     return (
-      <div
-        style={{
-          textAlign: "center",
-          padding: "60px 20px",
-          backgroundColor: "var(--card-bg)",
-          borderRadius: "16px",
-          border: "2px dashed var(--border)",
-          margin: "20px 0",
-        }}
-      >
-        <div style={{ fontSize: "40px", marginBottom: "12px" }}>📝</div>
-        <h3
-          style={{
-            fontSize: "20px",
-            color: "var(--text-h)",
-            marginBottom: "8px",
-            fontWeight: "600",
-          }}
-        >
-          No tasks found
-        </h3>
-        <p
-          style={{
-            fontSize: "15px",
-            color: "var(--text)",
-            marginBottom: "20px",
-          }}
-        >
+      <div className="my-6 border-[3px] border-dashed border-ink bg-paper p-10 text-center sm:p-16">
+        <p aria-hidden="true" className="font-display text-5xl text-coral">
+          +
+        </p>
+        <h3 className="text-card-title mt-5">No tasks found</h3>
+        <p className="mx-auto mt-3 max-w-sm text-ink/70">
           Try changing your filter settings or create a brand new task.
         </p>
         {onCreateNew && (
-          <button
-            onClick={onCreateNew}
-            style={{
-              backgroundColor: "#22c55e",
-              color: "#ffffff",
-              border: "none",
-              borderRadius: "8px",
-              padding: "10px 20px",
-              fontSize: "15px",
-              fontWeight: "600",
-              cursor: "pointer",
-              boxShadow: "0 4px 12px rgba(34, 197, 94, 0.3)",
-              transition: "all 0.2s ease",
-            }}
-          >
-            ➕ Create First Task
-          </button>
+          <Button onClick={onCreateNew} className="mt-7">
+            Create First Task <Arrow />
+          </Button>
         )}
       </div>
     );
   }
 
   return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
-        gap: "20px",
-        marginTop: "10px",
-      }}
-    >
+    <ul className="mt-4 grid list-none grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
       {tasks.map((task) => {
         const id = task._id || task.id;
         return (
-          <TaskCard
-            key={id}
-            task={task}
-            onToggleStatus={onToggleStatus}
-            onEdit={onEdit}
-            onDelete={onDelete}
-            isUpdating={updatingTaskId === id}
-            isDeleting={deletingTaskId === id}
-          />
+          <li key={id} className="h-full">
+            <TaskCard
+              task={task}
+              onToggleStatus={onToggleStatus}
+              onEdit={onEdit}
+              onDelete={onDelete}
+              isUpdating={updatingTaskId === id}
+              isDeleting={deletingTaskId === id}
+            />
+          </li>
         );
       })}
-    </div>
+    </ul>
   );
 }
 

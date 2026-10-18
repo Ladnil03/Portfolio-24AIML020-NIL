@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, lazy, Suspense } from "react";
 import * as taskService from "../services/taskService";
 import Spinner from "../components/Spinner";
 import ErrorMessage from "../components/ErrorMessage";
@@ -6,6 +6,15 @@ import TaskStats from "../components/TaskStats";
 import TaskList from "../components/TaskList";
 import TaskModal from "../components/TaskModal";
 import Toast from "../components/Toast";
+import PageHeader from "../components/PageHeader";
+import { Button } from "../components/ui/button";
+import { Arrow } from "../components/Decor";
+import { lazyWithMinDelay } from "../utils/lazyWithMinDelay";
+
+// Heavy third-party component (Recharts) lazy-loaded on demand with min-delay
+const TaskAnalyticsChart = lazy(
+  lazyWithMinDelay(() => import("../components/TaskAnalyticsChart"), 300)
+);
 
 function Tasks() {
   const [tasks, setTasks] = useState([]);
@@ -34,9 +43,12 @@ function Tasks() {
   // Toast Notification State
   const [toast, setToast] = useState(null);
 
-  const showToast = (message, type = "success") => {
+  // Toggle state to conditionally mount/load the heavy chart component
+  const [showCharts, setShowCharts] = useState(false);
+
+  const showToast = useCallback((message, type = "success") => {
     setToast({ message, type });
-  };
+  }, []);
 
   const loadTasks = useCallback(async () => {
     setIsLoading(true);
@@ -51,6 +63,8 @@ function Tasks() {
     }
   }, []);
 
+  // Initial fetch on mount. The rule flags the synchronous setState inside
+  // loadTasks, but this is the intended async-fetch pattern.
   useEffect(() => {
     loadTasks();
   }, [loadTasks]);
@@ -120,7 +134,7 @@ function Tasks() {
   };
 
   // Quick toggle status (completed / pending) with Toast feedback
-  const handleToggleStatus = async (task) => {
+  const handleToggleStatus = useCallback(async (task) => {
     const id = task._id || task.id;
     const newStatus = !task.completed;
 
@@ -141,21 +155,26 @@ function Tasks() {
     } finally {
       setUpdatingTaskId(null);
     }
-  };
+  }, [showToast]);
 
   // Open Edit Modal
-  const handleOpenEdit = (task) => {
+  const handleOpenEdit = useCallback((task) => {
     setEditingTask(task);
     setModalError(null);
     setIsModalOpen(true);
-  };
+  }, []);
+
+  // Set Task to Delete
+  const handleDeleteRequest = useCallback((task) => {
+    setTaskToDelete(task);
+  }, []);
 
   // Open Create Modal
-  const handleOpenCreate = () => {
+  const handleOpenCreate = useCallback(() => {
     setEditingTask(null);
     setModalError(null);
     setIsModalOpen(true);
-  };
+  }, []);
 
   // Confirm and Execute Task Deletion with Toast feedback
   const handleConfirmDelete = async () => {
@@ -216,269 +235,152 @@ function Tasks() {
     });
 
   return (
-    <section
-      style={{
-        padding: "40px 20px 60px",
-        maxWidth: "1150px",
-        margin: "0 auto",
-        width: "100%",
-        boxSizing: "border-box",
-      }}
-    >
+    <>
       {/* Toast Feedback Notification */}
       <Toast toast={toast} onClose={() => setToast(null)} />
 
-      {/* Header Banner */}
-      <div style={{ textAlign: "center", marginBottom: "28px" }}>
-        <h1
-          style={{
-            fontSize: "40px",
-            color: "var(--text-h)",
-            marginBottom: "10px",
-            fontWeight: "700",
-          }}
-        >
-          Task Management
-        </h1>
-        <p
-          style={{
-            fontSize: "17px",
-            color: "var(--text)",
-            maxWidth: "650px",
-            margin: "0 auto 24px",
-            lineHeight: "1.6",
-          }}
-        >
-          Manage tasks in real time backed by your Node.js + Express REST API and MongoDB Atlas database.
-        </p>
-
-        {/* Live MongoDB Status and Action Bar */}
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            flexWrap: "wrap",
-            gap: "14px",
-            marginTop: "10px",
-          }}
-        >
-          <div
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "8px",
-              padding: "6px 14px",
-              borderRadius: "20px",
-              backgroundColor: "rgba(34, 197, 94, 0.12)",
-              border: "1px solid rgba(34, 197, 94, 0.35)",
-              color: "#22c55e",
-              fontSize: "13px",
-              fontWeight: "600",
-            }}
-          >
-            <span
-              style={{
-                width: "8px",
-                height: "8px",
-                borderRadius: "50%",
-                backgroundColor: "#22c55e",
-                display: "inline-block",
-              }}
-            />
-            Connected to Node.js & MongoDB
-          </div>
-
-          <button
-            onClick={handleOpenCreate}
-            style={{
-              backgroundColor: "#22c55e",
-              color: "#ffffff",
-              border: "none",
-              borderRadius: "10px",
-              padding: "12px 22px",
-              fontSize: "15px",
-              fontWeight: "700",
-              cursor: "pointer",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "8px",
-              boxShadow: "0 4px 14px rgba(34, 197, 94, 0.35)",
-              transition: "transform 0.2s ease, background-color 0.2s ease",
-            }}
-          >
-            ➕ New Task
-          </button>
+      <PageHeader
+        index="10"
+        label="Task management"
+        title="Tasks"
+        lede="Manage tasks in real time backed by your Node.js + Express REST API and MongoDB Atlas database."
+      >
+        <div className="mt-8 flex flex-wrap items-center gap-4">
+          <span className="inline-flex items-center gap-2.5 border-[3px] border-ink bg-sky px-4 py-2.5 label-mono shadow-brutal-xs">
+            <span className="size-2.5 animate-blink bg-ink" aria-hidden="true" />
+            Connected to Node.js &amp; MongoDB
+          </span>
+          <Button onClick={handleOpenCreate}>
+            New Task <Arrow />
+          </Button>
         </div>
-      </div>
+      </PageHeader>
 
-      {/* Initial Loading Spinner */}
-      {isLoading && <Spinner message="Fetching tasks from MongoDB..." />}
+      <section className="bg-paper">
+        <div className="mx-auto w-full max-w-[1400px] px-5 py-12 sm:px-8 lg:px-12 lg:py-16">
+          {/* Initial Loading Spinner */}
+          {isLoading && <Spinner message="Fetching tasks from MongoDB..." />}
 
-      {/* Initial Fetch Error Display with Retry */}
-      {!isLoading && fetchError && (
-        <ErrorMessage
-          title="Backend Connection Error"
-          message={fetchError}
-          onRetry={loadTasks}
-        />
-      )}
+          {/* Initial Fetch Error Display with Retry */}
+          {!isLoading && fetchError && (
+            <ErrorMessage
+              title="Backend Connection Error"
+              message={fetchError}
+              onRetry={loadTasks}
+            />
+          )}
 
-      {/* Main Content Area */}
-      {!isLoading && !fetchError && (
-        <>
-          {/* Stats Overview */}
-          <TaskStats tasks={tasks} />
+          {/* Main Content Area */}
+          {!isLoading && !fetchError && (
+            <>
+              {/* Stats Overview */}
+              <TaskStats tasks={tasks} />
 
-          {/* Search and Filters Bar */}
-          <div
-            style={{
-              backgroundColor: "var(--card-bg)",
-              border: "1px solid var(--border)",
-              borderRadius: "16px",
-              padding: "18px 20px",
-              marginBottom: "24px",
-              boxShadow: "var(--shadow)",
-              display: "flex",
-              flexWrap: "wrap",
-              gap: "14px",
-              alignItems: "center",
-              justifyContent: "space-between",
-            }}
-          >
-            {/* Search Input */}
-            <div style={{ flex: "1 1 260px", minWidth: "200px" }}>
-              <input
-                type="text"
-                placeholder="🔍 Search tasks by title or description..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                style={{
-                  width: "100%",
-                  padding: "10px 14px",
-                  fontSize: "14px",
-                  borderRadius: "8px",
-                  border: "1px solid var(--border)",
-                  backgroundColor: "var(--code-bg)",
-                  color: "var(--text-h)",
-                  outline: "none",
-                  boxSizing: "border-box",
-                }}
-              />
-            </div>
-
-            {/* Filter Controls */}
-            <div
-              style={{
-                display: "flex",
-                flexWrap: "wrap",
-                gap: "10px",
-                alignItems: "center",
-              }}
-            >
-              {/* Status Filter */}
-              <select
-                aria-label="Filter tasks by status"
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                style={{
-                  padding: "10px 12px",
-                  borderRadius: "8px",
-                  border: "1px solid var(--border)",
-                  backgroundColor: "var(--code-bg)",
-                  color: "var(--text-h)",
-                  fontSize: "13px",
-                  fontWeight: "600",
-                  outline: "none",
-                  cursor: "pointer",
-                }}
-              >
-                <option value="all">All Statuses</option>
-                <option value="pending">⏳ Pending</option>
-                <option value="completed">✅ Completed</option>
-              </select>
-
-              {/* Priority Filter */}
-              <select
-                aria-label="Filter tasks by priority"
-                value={priorityFilter}
-                onChange={(e) => setPriorityFilter(e.target.value)}
-                style={{
-                  padding: "10px 12px",
-                  borderRadius: "8px",
-                  border: "1px solid var(--border)",
-                  backgroundColor: "var(--code-bg)",
-                  color: "var(--text-h)",
-                  fontSize: "13px",
-                  fontWeight: "600",
-                  outline: "none",
-                  cursor: "pointer",
-                }}
-              >
-                <option value="all">All Priorities</option>
-                <option value="high">🔥 High</option>
-                <option value="medium">⚡ Medium</option>
-                <option value="low">🌱 Low</option>
-              </select>
-
-              {/* Sort Order */}
-              <select
-                aria-label="Sort tasks"
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                style={{
-                  padding: "10px 12px",
-                  borderRadius: "8px",
-                  border: "1px solid var(--border)",
-                  backgroundColor: "var(--code-bg)",
-                  color: "var(--text-h)",
-                  fontSize: "13px",
-                  fontWeight: "600",
-                  outline: "none",
-                  cursor: "pointer",
-                }}
-              >
-                <option value="newest">⏱️ Newest First</option>
-                <option value="oldest">🕰️ Oldest First</option>
-                <option value="priority">🔥 By Priority</option>
-              </select>
-
-              {(searchQuery || statusFilter !== "all" || priorityFilter !== "all") && (
-                <button
-                  onClick={() => {
-                    setSearchQuery("");
-                    setStatusFilter("all");
-                    setPriorityFilter("all");
-                  }}
-                  style={{
-                    backgroundColor: "transparent",
-                    color: "var(--text)",
-                    border: "1px solid var(--border)",
-                    borderRadius: "8px",
-                    padding: "9px 12px",
-                    fontSize: "13px",
-                    cursor: "pointer",
-                    fontWeight: "600",
-                  }}
+              {/* Toggle Button for Heavy Third-Party Chart Component (Recharts) */}
+              <div className="mb-6 flex justify-end">
+                <Button
+                  variant={showCharts ? "accent" : "outline"}
+                  size="sm"
+                  onClick={() => setShowCharts((prev) => !prev)}
                 >
-                  Reset
-                </button>
-              )}
-            </div>
-          </div>
+                  {showCharts ? "Hide Visual Analytics" : "Show Visual Analytics"}
+                </Button>
+              </div>
 
-          {/* Task Grid / List */}
-          <TaskList
-            tasks={filteredTasks}
-            onToggleStatus={handleToggleStatus}
-            onEdit={handleOpenEdit}
-            onDelete={(task) => setTaskToDelete(task)}
-            updatingTaskId={updatingTaskId}
-            deletingTaskId={deletingTaskId}
-            onCreateNew={handleOpenCreate}
-          />
-        </>
-      )}
+              {/* Lazy-Loaded Heavy Third-Party Component with Minimum-Delay Fallback */}
+              {showCharts && (
+                <div className="mb-8 border-[3px] border-ink bg-paper shadow-brutal">
+                  <Suspense
+                    fallback={
+                      <Spinner message="Loading Recharts data visualization bundle..." />
+                    }
+                  >
+                    <TaskAnalyticsChart tasks={tasks} />
+                  </Suspense>
+                </div>
+              )}
+
+              {/* Search and Filters Bar */}
+              <div className="mb-8 flex flex-col gap-4 border-[3px] border-ink bg-paper p-4 shadow-brutal sm:p-5 lg:flex-row lg:items-center">
+                <div className="flex-1">
+                  <label htmlFor="task-search" className="sr-only">
+                    Search tasks by title or description
+                  </label>
+                  <input
+                    id="task-search"
+                    type="search"
+                    placeholder="Search tasks by title or description…"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full border-[3px] border-ink bg-paper px-4 py-3 text-[0.95rem] placeholder:text-ink/35 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-coral"
+                  />
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <select
+                    aria-label="Filter tasks by status"
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                    className="border-[3px] border-ink bg-paper px-3 py-3 label-mono"
+                  >
+                    <option value="all">All statuses</option>
+                    <option value="pending">Pending</option>
+                    <option value="completed">Completed</option>
+                  </select>
+
+                  <select
+                    aria-label="Filter tasks by priority"
+                    value={priorityFilter}
+                    onChange={(e) => setPriorityFilter(e.target.value)}
+                    className="border-[3px] border-ink bg-paper px-3 py-3 label-mono"
+                  >
+                    <option value="all">All priorities</option>
+                    <option value="high">High</option>
+                    <option value="medium">Medium</option>
+                    <option value="low">Low</option>
+                  </select>
+
+                  <select
+                    aria-label="Sort tasks"
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value)}
+                    className="border-[3px] border-ink bg-paper px-3 py-3 label-mono"
+                  >
+                    <option value="newest">Newest first</option>
+                    <option value="oldest">Oldest first</option>
+                    <option value="priority">By priority</option>
+                  </select>
+
+                  {(searchQuery || statusFilter !== "all" || priorityFilter !== "all") && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setSearchQuery("");
+                        setStatusFilter("all");
+                        setPriorityFilter("all");
+                      }}
+                    >
+                      Reset
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              {/* Task Grid / List */}
+              <TaskList
+                tasks={filteredTasks}
+                onToggleStatus={handleToggleStatus}
+                onEdit={handleOpenEdit}
+                onDelete={handleDeleteRequest}
+                updatingTaskId={updatingTaskId}
+                deletingTaskId={deletingTaskId}
+                onCreateNew={handleOpenCreate}
+              />
+            </>
+          )}
+        </div>
+      </section>
 
       {/* Create / Edit Task Modal */}
       <TaskModal
@@ -501,127 +403,48 @@ function Tasks() {
           role="dialog"
           aria-modal="true"
           aria-labelledby="delete-dialog-title"
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: "rgba(0, 0, 0, 0.65)",
-            backdropFilter: "blur(4px)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: "20px",
-            zIndex: 2000,
-          }}
+          className="fixed inset-0 z-[2000] flex items-center justify-center bg-ink/70 p-5"
           onClick={(e) => {
             if (e.target === e.currentTarget && deletingTaskId === null) {
               setTaskToDelete(null);
             }
           }}
         >
-          <div
-            style={{
-              backgroundColor: "var(--card-bg)",
-              borderRadius: "16px",
-              border: "2px solid #ef4444",
-              boxShadow: "0 20px 40px rgba(0, 0, 0, 0.3)",
-              width: "100%",
-              maxWidth: "450px",
-              padding: "28px",
-              boxSizing: "border-box",
-              color: "var(--text-h)",
-              textAlign: "center",
-              animation: "fadeIn 0.2s ease-out",
-            }}
-          >
-            <div
-              style={{
-                width: "54px",
-                height: "54px",
-                borderRadius: "50%",
-                backgroundColor: "rgba(239, 68, 68, 0.12)",
-                color: "#ef4444",
-                fontSize: "26px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                margin: "0 auto 16px",
-              }}
+          <div className="animate-rise w-full max-w-lg border-[3px] border-ink bg-coral p-7 text-center shadow-brutal-xl sm:p-9">
+            <span
+              aria-hidden="true"
+              className="font-display text-4xl leading-none text-ink"
             >
-              🗑️
-            </div>
-            <h3 id="delete-dialog-title" style={{ fontSize: "20px", margin: "0 0 10px", fontWeight: "700" }}>
-              Delete Task?
+              ✕
+            </span>
+            <h3 id="delete-dialog-title" className="text-card-title mt-5">
+              Delete task?
             </h3>
-            <p
-              style={{
-                fontSize: "14px",
-                color: "var(--text)",
-                lineHeight: "1.6",
-                marginBottom: "24px",
-              }}
-            >
+            <p className="mx-auto mt-4 max-w-sm leading-relaxed text-ink/85">
               Are you sure you want to permanently delete{" "}
-              <strong>"{taskToDelete.title}"</strong> from MongoDB? This action cannot be undone.
+              <strong>&ldquo;{taskToDelete.title}&rdquo;</strong> from MongoDB? This
+              action cannot be undone.
             </p>
 
-            <div style={{ display: "flex", justifyContent: "center", gap: "12px" }}>
-              <button
+            <div className="mt-8 flex flex-col-reverse gap-3 sm:flex-row sm:justify-center">
+              <Button
+                variant="outline"
                 onClick={() => setTaskToDelete(null)}
                 disabled={deletingTaskId !== null}
-                style={{
-                  padding: "10px 18px",
-                  borderRadius: "8px",
-                  border: "1px solid var(--border)",
-                  backgroundColor: "var(--code-bg)",
-                  color: "var(--text-h)",
-                  fontSize: "14px",
-                  fontWeight: "600",
-                  cursor: deletingTaskId !== null ? "not-allowed" : "pointer",
-                }}
               >
                 Cancel
-              </button>
-
-              <button
+              </Button>
+              <Button
                 onClick={handleConfirmDelete}
                 disabled={deletingTaskId !== null}
-                style={{
-                  padding: "10px 22px",
-                  borderRadius: "8px",
-                  border: "none",
-                  backgroundColor: "#ef4444",
-                  color: "#ffffff",
-                  fontSize: "14px",
-                  fontWeight: "600",
-                  cursor: deletingTaskId !== null ? "not-allowed" : "pointer",
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  boxShadow: "0 4px 12px rgba(239, 68, 68, 0.3)",
-                }}
               >
-                {deletingTaskId !== null && (
-                  <div
-                    style={{
-                      border: "2px solid rgba(255, 255, 255, 0.3)",
-                      borderTop: "2px solid #ffffff",
-                      borderRadius: "50%",
-                      width: "12px",
-                      height: "12px",
-                      animation: "spin 0.8s linear infinite",
-                    }}
-                  />
-                )}
                 {deletingTaskId !== null ? "Deleting..." : "Yes, Delete Task"}
-              </button>
+              </Button>
             </div>
           </div>
         </div>
       )}
-    </section>
+    </>
   );
 }
 

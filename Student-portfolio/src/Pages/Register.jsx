@@ -1,6 +1,9 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import * as authService from "../services/authService";
+import AuthShell, { AuthField } from "../components/AuthShell";
+import { Button } from "../components/ui/button";
+import { Arrow } from "../components/Decor";
 
 function Register({ onLogin }) {
   const navigate = useNavigate();
@@ -44,262 +47,64 @@ function Register({ onLogin }) {
   };
 
   return (
-    <section
-      style={{
-        minHeight: "calc(100vh - 160px)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "40px 20px",
-      }}
-    >
-      <div
-        style={{
-          width: "100%",
-          maxWidth: "440px",
-          backgroundColor: "var(--card-bg)",
-          border: "1px solid var(--border)",
-          borderRadius: "20px",
-          padding: "40px 36px",
-          boxShadow: "var(--shadow)",
-          boxSizing: "border-box",
-        }}
-      >
-        {/* Header */}
-        <div style={{ textAlign: "center", marginBottom: "32px" }}>
-          <div
-            style={{
-              width: "60px",
-              height: "60px",
-              borderRadius: "50%",
-              backgroundColor: "rgba(34, 197, 94, 0.12)",
-              color: "#22c55e",
-              fontSize: "28px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              margin: "0 auto 16px",
-            }}
-          >
-            ✨
-          </div>
-          <h1
-            style={{
-              fontSize: "28px",
-              fontWeight: "700",
-              color: "var(--text-h)",
-              margin: "0 0 8px",
-            }}
-          >
-            Create Account
-          </h1>
-          <p style={{ fontSize: "15px", color: "var(--text)", margin: 0 }}>
-            Sign up to start managing your tasks
-          </p>
-        </div>
-
-        {/* Error Alert */}
-        {error && (
-          <div
-            style={{
-              backgroundColor: "rgba(239, 68, 68, 0.1)",
-              border: "1px solid rgba(239, 68, 68, 0.3)",
-              color: "#ef4444",
-              borderRadius: "10px",
-              padding: "12px 16px",
-              fontSize: "14px",
-              marginBottom: "20px",
-              fontWeight: "500",
-            }}
-          >
-            ⚠️ {error}
-          </div>
-        )}
-
-        {/* Form */}
-        <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: "20px" }}>
-            <label
-              htmlFor="register-name"
-              style={{
-                display: "block",
-                fontSize: "14px",
-                fontWeight: "600",
-                color: "var(--text-h)",
-                marginBottom: "8px",
-              }}
-            >
-              Full Name
-            </label>
-            <input
-              id="register-name"
-              type="text"
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-              placeholder="John Doe"
-              autoComplete="name"
-              required
-              style={{
-                width: "100%",
-                padding: "12px 14px",
-                fontSize: "15px",
-                borderRadius: "10px",
-                border: "1px solid var(--border)",
-                backgroundColor: "var(--code-bg)",
-                color: "var(--text-h)",
-                outline: "none",
-                boxSizing: "border-box",
-                transition: "border-color 0.2s ease",
-              }}
-            />
-          </div>
-
-          <div style={{ marginBottom: "20px" }}>
-            <label
-              htmlFor="register-email"
-              style={{
-                display: "block",
-                fontSize: "14px",
-                fontWeight: "600",
-                color: "var(--text-h)",
-                marginBottom: "8px",
-              }}
-            >
-              Email Address
-            </label>
-            <input
-              id="register-email"
-              type="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              placeholder="you@example.com"
-              autoComplete="email"
-              required
-              style={{
-                width: "100%",
-                padding: "12px 14px",
-                fontSize: "15px",
-                borderRadius: "10px",
-                border: "1px solid var(--border)",
-                backgroundColor: "var(--code-bg)",
-                color: "var(--text-h)",
-                outline: "none",
-                boxSizing: "border-box",
-                transition: "border-color 0.2s ease",
-              }}
-            />
-          </div>
-
-          <div style={{ marginBottom: "28px" }}>
-            <label
-              htmlFor="register-password"
-              style={{
-                display: "block",
-                fontSize: "14px",
-                fontWeight: "600",
-                color: "var(--text-h)",
-                marginBottom: "8px",
-              }}
-            >
-              Password
-            </label>
-            <input
-              id="register-password"
-              type="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              placeholder="At least 6 characters"
-              autoComplete="new-password"
-              required
-              minLength={6}
-              style={{
-                width: "100%",
-                padding: "12px 14px",
-                fontSize: "15px",
-                borderRadius: "10px",
-                border: "1px solid var(--border)",
-                backgroundColor: "var(--code-bg)",
-                color: "var(--text-h)",
-                outline: "none",
-                boxSizing: "border-box",
-                transition: "border-color 0.2s ease",
-              }}
-            />
-            <p
-              style={{
-                fontSize: "12px",
-                color: "var(--text)",
-                marginTop: "6px",
-                marginBottom: 0,
-              }}
-            >
-              Must be at least 6 characters
-            </p>
-          </div>
-
-          <button
-            type="submit"
-            disabled={isLoading}
-            style={{
-              width: "100%",
-              padding: "14px",
-              fontSize: "16px",
-              fontWeight: "700",
-              borderRadius: "12px",
-              border: "none",
-              backgroundColor: isLoading ? "#16a34a" : "#22c55e",
-              color: "#ffffff",
-              cursor: isLoading ? "not-allowed" : "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "10px",
-              boxShadow: "0 4px 14px rgba(34, 197, 94, 0.35)",
-              transition: "background-color 0.2s ease, transform 0.2s ease",
-            }}
-          >
-            {isLoading && (
-              <div
-                style={{
-                  border: "2px solid rgba(255,255,255,0.3)",
-                  borderTop: "2px solid #fff",
-                  borderRadius: "50%",
-                  width: "16px",
-                  height: "16px",
-                  animation: "spin 0.8s linear infinite",
-                }}
-              />
-            )}
-            {isLoading ? "Creating Account..." : "Create Account"}
-          </button>
-        </form>
-
-        {/* Login Link */}
-        <p
-          style={{
-            textAlign: "center",
-            marginTop: "24px",
-            fontSize: "14px",
-            color: "var(--text)",
-          }}
-        >
+    <AuthShell
+      index="09"
+      title="Create account"
+      lede="Sign up to start managing your tasks."
+      error={error}
+      footer={
+        <>
           Already have an account?{" "}
           <Link
             to="/login"
-            style={{
-              color: "#22c55e",
-              fontWeight: "600",
-              textDecoration: "none",
-            }}
+            className="brutal-link text-ink underline decoration-[3px] underline-offset-4"
           >
             Sign In
           </Link>
-        </p>
-      </div>
-    </section>
+        </>
+      }
+    >
+      <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+        <AuthField
+          id="register-name"
+          name="name"
+          label="Full name"
+          autoComplete="name"
+          placeholder="John Doe"
+          required
+          value={formData.name}
+          onChange={handleChange}
+        />
+        <AuthField
+          id="register-email"
+          name="email"
+          label="Email address"
+          type="email"
+          autoComplete="email"
+          placeholder="you@example.com"
+          required
+          value={formData.email}
+          onChange={handleChange}
+        />
+        <AuthField
+          id="register-password"
+          name="password"
+          label="Password"
+          type="password"
+          autoComplete="new-password"
+          placeholder="At least 6 characters"
+          minLength={6}
+          required
+          hint="Must be at least 6 characters"
+          value={formData.password}
+          onChange={handleChange}
+        />
+        <Button type="submit" disabled={isLoading} className="w-full sm:w-auto sm:self-start">
+          {isLoading ? "Creating Account..." : "Create Account"}
+          {!isLoading && <Arrow />}
+        </Button>
+      </form>
+    </AuthShell>
   );
 }
 

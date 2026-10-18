@@ -1,113 +1,35 @@
 import React from "react";
+import { CornerMarks } from "@/components/Decor";
 
-function TaskStats({ tasks = [] }) {
+const TONES = ["bg-paper", "bg-yellow", "bg-sky", "bg-coral"];
+
+const TaskStats = React.memo(function TaskStats({ tasks = [] }) {
   const total = tasks.length;
   const completed = tasks.filter((t) => t.completed).length;
   const pending = total - completed;
   const highPriority = tasks.filter((t) => t.priority === "high" && !t.completed).length;
 
   const statCards = [
-    {
-      label: "Total Tasks",
-      value: total,
-      icon: "📋",
-      color: "var(--accent)",
-      bg: "rgba(34, 197, 94, 0.1)",
-      border: "rgba(34, 197, 94, 0.3)",
-    },
-    {
-      label: "Pending",
-      value: pending,
-      icon: "⏳",
-      color: "#f59e0b",
-      bg: "rgba(245, 158, 11, 0.1)",
-      border: "rgba(245, 158, 11, 0.3)",
-    },
-    {
-      label: "Completed",
-      value: completed,
-      icon: "✅",
-      color: "#10b981",
-      bg: "rgba(16, 185, 129, 0.1)",
-      border: "rgba(16, 185, 129, 0.3)",
-    },
-    {
-      label: "High Priority",
-      value: highPriority,
-      icon: "🔥",
-      color: "#ef4444",
-      bg: "rgba(239, 68, 68, 0.1)",
-      border: "rgba(239, 68, 68, 0.3)",
-    },
+    { label: "Total tasks", value: total },
+    { label: "Pending", value: pending },
+    { label: "Completed", value: completed },
+    { label: "High priority", value: highPriority },
   ];
 
   return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-        gap: "16px",
-        marginBottom: "28px",
-        width: "100%",
-      }}
-    >
+    <div className="mb-8 grid w-full grid-cols-2 gap-4 lg:grid-cols-4">
       {statCards.map((stat, index) => (
         <div
-          key={index}
-          style={{
-            backgroundColor: "var(--card-bg)",
-            border: `1px solid ${stat.border}`,
-            borderRadius: "14px",
-            padding: "16px 20px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            boxShadow: "var(--shadow)",
-            transition: "transform 0.2s ease, box-shadow 0.2s ease",
-          }}
+          key={stat.label}
+          className={`relative flex flex-col justify-between gap-5 border-[3px] border-ink p-5 shadow-brutal brutal-press transition-all ${TONES[index % TONES.length]}`}
         >
-          <div style={{ textAlign: "left" }}>
-            <p
-              style={{
-                fontSize: "13px",
-                fontWeight: "600",
-                color: "var(--text)",
-                textTransform: "uppercase",
-                letterSpacing: "0.5px",
-                margin: "0 0 4px",
-              }}
-            >
-              {stat.label}
-            </p>
-            <h3
-              style={{
-                fontSize: "26px",
-                fontWeight: "700",
-                color: "var(--text-h)",
-                margin: 0,
-              }}
-            >
-              {stat.value}
-            </h3>
-          </div>
-          <div
-            style={{
-              width: "44px",
-              height: "44px",
-              borderRadius: "12px",
-              backgroundColor: stat.bg,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: "20px",
-            }}
-          >
-            {stat.icon}
-          </div>
+          <CornerMarks />
+          <p className="label-mono font-bold text-xs text-ink/70">{stat.label.toUpperCase()}</p>
+          <p className="font-display text-5xl leading-none text-ink">{stat.value}</p>
         </div>
       ))}
     </div>
   );
-}
+});
 
 export default TaskStats;

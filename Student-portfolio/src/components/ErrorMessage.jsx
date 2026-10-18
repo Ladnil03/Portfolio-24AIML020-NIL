@@ -1,4 +1,5 @@
-import React from "react";
+import { Button } from "@/components/ui/button";
+import { Arrow } from "@/components/Decor";
 
 function ErrorMessage({
   title = "Failed to Load Tasks",
@@ -7,68 +8,24 @@ function ErrorMessage({
 }) {
   return (
     <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "40px 30px",
-        margin: "40px auto",
-        maxWidth: "600px",
-        backgroundColor: "var(--card-bg)",
-        border: "2px solid #ef4444",
-        borderRadius: "16px",
-        boxShadow: "var(--shadow)",
-        textAlign: "center",
-      }}
+      role="alert"
+      className="mx-auto my-10 flex max-w-xl flex-col items-center gap-5 border-[3px] border-ink bg-coral p-8 text-center shadow-brutal-lg sm:p-10"
     >
-      <div
-        style={{
-          width: "60px",
-          height: "60px",
-          borderRadius: "50%",
-          backgroundColor: "rgba(239, 68, 68, 0.1)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          color: "#ef4444",
-          fontSize: "30px",
-          marginBottom: "15px",
-        }}
+      <span
+        aria-hidden="true"
+        className="font-display text-5xl leading-none text-ink"
       >
-        ⚠️
-      </div>
-      <h2 style={{ color: "#ef4444", fontSize: "24px", margin: "0 0 10px" }}>
-        {title}
-      </h2>
-      <p
-        style={{
-          color: "var(--text)",
-          fontSize: "16px",
-          lineHeight: "1.6",
-          marginBottom: "20px",
-        }}
-      >
-        {message || "An unexpected error occurred while communicating with the MongoDB API."}
+        !
+      </span>
+      <h2 className="text-card-title">{title}</h2>
+      <p className="leading-relaxed text-ink/85">
+        {message ||
+          "An unexpected error occurred while communicating with the MongoDB API."}
       </p>
       {onRetry && (
-        <button
-          onClick={onRetry}
-          style={{
-            backgroundColor: "#22c55e",
-            color: "#ffffff",
-            border: "none",
-            padding: "10px 22px",
-            fontSize: "16px",
-            fontWeight: "600",
-            borderRadius: "8px",
-            cursor: "pointer",
-            transition: "all 0.3s ease",
-            boxShadow: "0 4px 12px rgba(34, 197, 94, 0.3)",
-          }}
-        >
-          Try Again
-        </button>
+        <Button variant="outline" onClick={onRetry} className="mt-1">
+          Try Again <Arrow />
+        </Button>
       )}
     </div>
   );

@@ -53,6 +53,25 @@ app.use((req, res, next) => {
 });
 
 // ── Routes ───────────────────────────────────────────────────────────
+const { getMetrics, resetMetrics } = require("./utils/cache");
+
+// Debug endpoint exposing cache-hit/miss metrics, cached keys, and stats
+app.get("/api/cache/debug", (req, res) => {
+  res.status(200).json({
+    success: true,
+    data: getMetrics(),
+  });
+});
+
+// Optional cache metrics reset endpoint for clean benchmarking
+app.post("/api/cache/debug/reset", (req, res) => {
+  resetMetrics();
+  res.status(200).json({
+    success: true,
+    message: "Cache metrics reset successfully",
+  });
+});
+
 app.use("/api/auth", authRoutes);
 app.use("/tasks", taskRoutes);
 
