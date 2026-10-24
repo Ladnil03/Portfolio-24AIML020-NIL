@@ -3,6 +3,8 @@ const mongoose = require("mongoose");
 const Task = require("../models/Task");
 const auth = require("../middleware/auth");
 const { validateTask } = require("../middleware/validate");
+const eventBus = require("../events/eventBus");
+const EVENT_TYPES = require("../events/eventTypes");
 const {
   cache,
   recordHit,
@@ -189,6 +191,21 @@ router.post("/", validateTask, async (req, res, next) => {
     // Cache Invalidation on write operation
     invalidateTasksCache(newTask._id.toString());
 
+    // Asynchronously publish domain events (Decoupled Pub/Sub)
+    eventBus.publish(
+      EVENT_TYPES.TASK_CREATED,
+      { task: newTask, actor: req.user },
+      { actor: req.user }
+    );
+
+    if (newTask.priority === "high") {
+      eventBus.publish(
+        EVENT_TYPES.TASK_HIGH_PRIORITY_ALERT,
+        { task: newTask, actor: req.user },
+        { actor: req.user }
+      );
+    }
+
     const resourceUrl = `/tasks/${newTask._id}`;
     res.setHeader("Location", resourceUrl);
 
@@ -228,6 +245,13 @@ router.put("/:id", validateTaskId, validateTask, async (req, res, next) => {
     // Invalidate list cache and single task cache
     invalidateTasksCache(req.params.id);
 
+    // Asynchronously publish task:updated event
+    eventBus.publish(
+      EVENT_TYPES.TASK_UPDATED,
+      { task, taskId: task._id, actor: req.user },
+      { actor: req.user }
+    );
+
     res.status(200).json({
       success: true,
       message: "Task updated successfully",
@@ -254,6 +278,7 @@ router.patch("/:id", validateTaskId, async (req, res, next) => {
 
     const { title, description, completed, priority, status } = req.body;
 
+    const wasCompleted = task.completed;
     if (title !== undefined) {
       task.title = title;
     }
@@ -273,6 +298,27 @@ router.patch("/:id", validateTaskId, async (req, res, next) => {
 
     // Invalidate list cache and single task cache
     invalidateTasksCache(req.params.id);
+
+    // If completion status changed, publish status change event
+    if (task.completed !== wasCompleted) {
+      eventBus.publish(
+        EVENT_TYPES.TASK_STATUS_CHANGED,
+        {
+          task,
+          taskId: task._id,
+          completed: task.completed,
+          actor: req.user,
+        },
+        { actor: req.user }
+      );
+    }
+
+    // Publish general task update event
+    eventBus.publish(
+      EVENT_TYPES.TASK_UPDATED,
+      { task, taskId: task._id, actor: req.user },
+      { actor: req.user }
+    );
 
     res.status(200).json({
       success: true,
@@ -300,6 +346,17 @@ router.delete("/:id", validateTaskId, async (req, res, next) => {
 
     // Invalidate list cache and single task cache
     invalidateTasksCache(req.params.id);
+
+    // Asynchronously publish task:deleted event
+    eventBus.publish(
+      EVENT_TYPES.TASK_DELETED,
+      {
+        taskId: req.params.id,
+        task: deletedTask,
+        actor: req.user,
+      },
+      { actor: req.user }
+    );
 
     res.status(200).json({
       success: true,

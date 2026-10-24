@@ -1,6 +1,8 @@
 require("dotenv").config();
 const dns = require("dns");
-dns.setServers(["8.8.8.8", "1.1.1.1"]);
+if (!process.env.DOCKER_ENV && !process.env.CONTAINER) {
+  dns.setServers(["8.8.8.8", "1.1.1.1"]);
+}
 
 const express = require("express");
 const mongoose = require("mongoose");
@@ -8,6 +10,12 @@ const cors = require("cors");
 
 const authRoutes = require("./routes/auth");
 const taskRoutes = require("./routes/tasks");
+const eventRoutes = require("./routes/events");
+const jobRoutes = require("./routes/jobs");
+const { initializeConsumers } = require("./consumers");
+
+// Initialize Event-Driven Architecture Consumers
+initializeConsumers();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -52,6 +60,19 @@ app.use((req, res, next) => {
   next();
 });
 
+// Healthcheck endpoint for Docker container orchestration
+app.get("/health", (req, res) => {
+  const dbState = mongoose.connection.readyState;
+  const dbStatus = dbState === 1 ? "connected" : dbState === 2 ? "connecting" : "disconnected";
+  res.status(200).json({
+    status: "healthy",
+    service: "student-backend",
+    uptimeSeconds: Math.floor(process.uptime()),
+    timestamp: new Date().toISOString(),
+    database: dbStatus,
+  });
+});
+
 // ── Routes ───────────────────────────────────────────────────────────
 const { getMetrics, resetMetrics } = require("./utils/cache");
 
@@ -74,6 +95,8 @@ app.post("/api/cache/debug/reset", (req, res) => {
 
 app.use("/api/auth", authRoutes);
 app.use("/tasks", taskRoutes);
+app.use("/api/events", eventRoutes);
+app.use("/api/jobs", jobRoutes);
 
 // 404 Route handler for undefined routes
 app.use((req, res) => {

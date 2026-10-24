@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.git/
+.gitignore
+*.log
+.DS_Store
+Dockerfile*
+.dockerignore
+PERFORMANCE_REPORT.md
+README.md

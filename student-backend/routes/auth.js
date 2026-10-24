@@ -3,6 +3,8 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const auth = require("../middleware/auth");
 const { validateRegister, validateLogin } = require("../middleware/validate");
+const eventBus = require("../events/eventBus");
+const EVENT_TYPES = require("../events/eventTypes");
 
 const router = express.Router();
 
@@ -38,6 +40,13 @@ router.post("/register", validateRegister, async (req, res, next) => {
     await user.save();
 
     const token = generateToken(user);
+
+    // Asynchronously publish user:registered domain event
+    eventBus.publish(
+      EVENT_TYPES.USER_REGISTERED,
+      { user: { id: user._id, name: user.name, email: user.email } },
+      { actor: { id: user._id, name: user.name, email: user.email } }
+    );
 
     res.status(201).json({
       success: true,
@@ -86,6 +95,13 @@ router.post("/login", validateLogin, async (req, res, next) => {
     }
 
     const token = generateToken(user);
+
+    // Asynchronously publish user:logged_in domain event
+    eventBus.publish(
+      EVENT_TYPES.USER_LOGGED_IN,
+      { user: { id: user._id, name: user.name, email: user.email } },
+      { actor: { id: user._id, name: user.name, email: user.email } }
+    );
 
     res.status(200).json({
       success: true,

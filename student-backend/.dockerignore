@@ -1,0 +1,16 @@
+node_modules/
+npm-debug.log
+.env
+.env.local
+.git/
+.gitignore
+*.log
+exports/*.csv
+exports/*.json
+!exports/.gitkeep
+Dockerfile*
+.dockerignore
+CACHING_REPORT.md
+MATURITY.md
+ASYNC_EVENT_DRIVEN_REPORT.md
+benchmark*.js

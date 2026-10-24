@@ -10,6 +10,7 @@ import PageHeader from "../components/PageHeader";
 import { Button } from "../components/ui/button";
 import { Arrow } from "../components/Decor";
 import { lazyWithMinDelay } from "../utils/lazyWithMinDelay";
+import EventMonitorDrawer from "../components/EventMonitorDrawer";
 
 // Heavy third-party component (Recharts) lazy-loaded on demand with min-delay
 const TaskAnalyticsChart = lazy(
@@ -45,6 +46,9 @@ function Tasks() {
 
   // Toggle state to conditionally mount/load the heavy chart component
   const [showCharts, setShowCharts] = useState(false);
+
+  // Event Monitor Drawer State (Event-Driven Architecture)
+  const [isEventDrawerOpen, setIsEventDrawerOpen] = useState(false);
 
   const showToast = useCallback((message, type = "success") => {
     setToast({ message, type });
@@ -250,6 +254,14 @@ function Tasks() {
             <span className="size-2.5 animate-blink bg-ink" aria-hidden="true" />
             Connected to Node.js &amp; MongoDB
           </span>
+          <Button
+            variant="outline"
+            onClick={() => setIsEventDrawerOpen(true)}
+            className="border-[3px] border-ink bg-yellow text-ink shadow-brutal-xs hover:bg-yellow/90"
+          >
+            <span className="size-2 rounded-full bg-red-600 animate-pulse mr-1" />
+            ⚡ Event Stream &amp; Async Jobs
+          </Button>
           <Button onClick={handleOpenCreate}>
             New Task <Arrow />
           </Button>
@@ -444,6 +456,12 @@ function Tasks() {
           </div>
         </div>
       )}
+
+      {/* Event-Driven Architecture (EDA) & Background Jobs Drawer */}
+      <EventMonitorDrawer
+        isOpen={isEventDrawerOpen}
+        onClose={() => setIsEventDrawerOpen(false)}
+      />
     </>
   );
 }
