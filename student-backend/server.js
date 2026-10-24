@@ -12,6 +12,7 @@ const authRoutes = require("./routes/auth");
 const taskRoutes = require("./routes/tasks");
 const eventRoutes = require("./routes/events");
 const jobRoutes = require("./routes/jobs");
+const aiRoutes = require("./routes/ai");
 const { initializeConsumers } = require("./consumers");
 
 // Initialize Event-Driven Architecture Consumers
@@ -97,6 +98,7 @@ app.use("/api/auth", authRoutes);
 app.use("/tasks", taskRoutes);
 app.use("/api/events", eventRoutes);
 app.use("/api/jobs", jobRoutes);
+app.use("/api/ai", aiRoutes);
 
 // 404 Route handler for undefined routes
 app.use((req, res) => {

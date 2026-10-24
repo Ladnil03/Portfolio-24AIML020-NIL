@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { cn } from "cn";
 import { Button } from "@/components/ui/button";
 import { Arrow } from "@/components/Decor";
+import { getAiTaskSuggestions } from "../services/taskService";
 
 const FIELD =
   "w-full border-[3px] border-ink bg-paper px-4 py-3 text-[0.95rem] text-ink placeholder:text-ink/35 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-coral";
@@ -28,6 +29,11 @@ function TaskModal({
   const [completed, setCompleted] = useState(false);
   const [clientError, setClientError] = useState("");
 
+  // AI Assistant State
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiSuggestion, setAiSuggestion] = useState(null);
+  const [aiError, setAiError] = useState(null);
+
   // Seed the form from props whenever the modal opens. Editing the same task twice
   // must reset fields, so remount-on-key is not enough here.
   useEffect(() => {
@@ -44,8 +50,43 @@ function TaskModal({
         setCompleted(false);
       }
       setClientError("");
+      setAiSuggestion(null);
+      setAiError(null);
     }
   }, [isOpen, initialData]);
+
+  const handleAiAssist = async () => {
+    if (!title.trim()) {
+      setClientError("Please enter a task title first so the AI can generate suggestions.");
+      return;
+    }
+    setAiLoading(true);
+    setAiError(null);
+    setClientError("");
+    try {
+      const suggestion = await getAiTaskSuggestions(title.trim(), description.trim());
+      if (suggestion) {
+        setAiSuggestion(suggestion);
+      } else {
+        setAiError("Could not generate AI suggestions.");
+      }
+    } catch (err) {
+      console.warn("AI suggestion fetch failed:", err);
+      setAiError(err.message || "AI assist is momentarily unavailable. You can still create tasks normally.");
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const applyAiSuggestion = () => {
+    if (!aiSuggestion) return;
+    if (aiSuggestion.suggestedDescription) {
+      setDescription(aiSuggestion.suggestedDescription);
+    }
+    if (aiSuggestion.suggestedPriority) {
+      setPriority(aiSuggestion.suggestedPriority);
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -102,13 +143,25 @@ function TaskModal({
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-5">
           <div>
-            <label htmlFor="task-title-input" className="label-mono mb-2 block">
-              Task title *
-            </label>
+            <div className="mb-2 flex items-center justify-between">
+              <label htmlFor="task-title-input" className="label-mono block">
+                Task title *
+              </label>
+              <button
+                type="button"
+                onClick={handleAiAssist}
+                disabled={isLoading || aiLoading}
+                className="inline-flex items-center gap-1.5 border-[2px] border-ink bg-sky px-2.5 py-1 text-xs font-mono font-bold text-ink shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:bg-yellow transition-colors brutal-press disabled:opacity-50"
+                title="Auto-generate description, priority, and deadline"
+              >
+                <span>✨</span>
+                <span>{aiLoading ? "AI Analyzing..." : "AI Auto-Complete"}</span>
+              </button>
+            </div>
             <input
               id="task-title-input"
               type="text"
-              placeholder="e.g. Complete Practical 5 MongoDB Integration"
+              placeholder="e.g. Critical bug fix: database connection dropping"
               value={title}
               onChange={(e) => {
                 setTitle(e.target.value);
@@ -118,6 +171,75 @@ function TaskModal({
               className={FIELD}
             />
           </div>
+
+          {/* Meaningful AI-generated Suggestion Display (Not raw JSON) */}
+          {aiSuggestion && (
+            <div className="border-[3px] border-ink bg-muted/30 p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex flex-col gap-3">
+              <div className="flex items-center justify-between border-b-2 border-ink pb-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-base">🤖</span>
+                  <span className="label-mono text-xs font-bold uppercase tracking-wider text-ink">
+                    AI Task Insights ({aiSuggestion.source})
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={applyAiSuggestion}
+                  className="border-[2px] border-ink bg-lime-400 px-2.5 py-1 text-xs font-mono font-bold text-ink hover:bg-lime-300 brutal-press shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+                >
+                  Apply AI Suggestions
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 text-xs font-mono">
+                <div className="border-2 border-ink bg-paper p-2">
+                  <span className="text-ink/60 block text-[10px] uppercase">Recommended Priority</span>
+                  <span className={cn(
+                    "font-bold uppercase px-1.5 py-0.5 inline-block mt-1 border border-ink text-[11px]",
+                    aiSuggestion.suggestedPriority === "high" && "bg-coral text-white",
+                    aiSuggestion.suggestedPriority === "medium" && "bg-yellow text-ink",
+                    aiSuggestion.suggestedPriority === "low" && "bg-sky text-ink"
+                  )}>
+                    {aiSuggestion.suggestedPriority}
+                  </span>
+                </div>
+                <div className="border-2 border-ink bg-paper p-2">
+                  <span className="text-ink/60 block text-[10px] uppercase">Proposed Due Date</span>
+                  <span className="font-bold text-ink text-xs block mt-1">
+                    📅 {aiSuggestion.suggestedDueDate} ({aiSuggestion.estimatedDays} days)
+                  </span>
+                </div>
+              </div>
+
+              <div className="text-xs font-mono bg-paper border-2 border-ink p-2.5">
+                <span className="text-ink/60 block text-[10px] uppercase mb-1">Generated Description</span>
+                <p className="text-ink text-[12px] leading-relaxed">{aiSuggestion.suggestedDescription}</p>
+              </div>
+
+              {aiSuggestion.checklist && aiSuggestion.checklist.length > 0 && (
+                <div className="text-xs font-mono bg-paper border-2 border-ink p-2.5">
+                  <span className="text-ink/60 block text-[10px] uppercase mb-1.5">Proposed Action Steps</span>
+                  <ul className="list-disc pl-4 space-y-1 text-ink/90 text-[11px]">
+                    {aiSuggestion.checklist.map((step, idx) => (
+                      <li key={idx}>{step}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {aiSuggestion.reasoning && (
+                <p className="text-[11px] font-mono italic text-ink/70">
+                  💡 Reasoning: {aiSuggestion.reasoning}
+                </p>
+              )}
+            </div>
+          )}
+
+          {aiError && (
+            <div className="border-2 border-ink bg-yellow/40 p-2.5 text-xs font-mono text-ink">
+              ⚠️ {aiError}
+            </div>
+          )}
 
           <div>
             <label htmlFor="task-desc-input" className="label-mono mb-2 block">

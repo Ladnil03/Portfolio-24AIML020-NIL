@@ -145,3 +145,21 @@ export async function deleteTask(id) {
   const result = await handleResponse(response);
   return result?.data;
 }
+
+/**
+ * Request AI-powered task assistance (Gemini / OpenAI / Smart Heuristics)
+ * API keys remain securely on the backend only.
+ * @param {string} title
+ * @param {string} [currentDescription]
+ * @returns {Promise<Object>} AI suggestions
+ */
+export async function getAiTaskSuggestions(title, currentDescription = "") {
+  const response = await fetch(`${API_BASE_URL}/api/ai/suggest`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify({ title, currentDescription }),
+  });
+  const result = await handleResponse(response);
+  return result?.data;
+}
+
