@@ -128,6 +128,10 @@ app.use((err, req, res, next) => {
   });
 });
 
-app.listen(PORT, () => {
-  console.log(`Task Management API running on http://localhost:${PORT}`);
-});
+if (process.env.NODE_ENV !== "test" && !process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`Task Management API running on http://localhost:${PORT}`);
+  });
+}
+
+module.exports = app;
