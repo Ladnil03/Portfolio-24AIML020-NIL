@@ -1,7 +1,11 @@
 require("dotenv").config();
 const dns = require("dns");
-if (!process.env.DOCKER_ENV && !process.env.CONTAINER) {
-  dns.setServers(["8.8.8.8", "1.1.1.1"]);
+if (!process.env.DOCKER_ENV && !process.env.CONTAINER && !process.env.VERCEL) {
+  try {
+    dns.setServers(["8.8.8.8", "1.1.1.1"]);
+  } catch (e) {
+    // ignore in serverless environments
+  }
 }
 
 const express = require("express");
@@ -33,15 +37,52 @@ app.use(
 
 app.use(express.json());
 
-// MongoDB Connection
-mongoose
-  .connect(MONGODB_URI)
-  .then(() => {
-    console.log(`Connected successfully to MongoDB at ${MONGODB_URI}`);
-  })
-  .catch((err) => {
-    console.error("MongoDB connection error:", err.message);
-  });
+// Cached Mongoose Connection for Serverless (Vercel)
+let cachedDb = global.mongoose;
+if (!cachedDb) {
+  cachedDb = global.mongoose = { conn: null, promise: null };
+}
+
+async function connectToDatabase() {
+  if (cachedDb.conn) {
+    return cachedDb.conn;
+  }
+  if (!cachedDb.promise) {
+    cachedDb.promise = mongoose
+      .connect(MONGODB_URI, {
+        bufferCommands: false,
+      })
+      .then((m) => {
+        console.log("Connected successfully to MongoDB");
+        return m;
+      })
+      .catch((err) => {
+        cachedDb.promise = null;
+        console.error("MongoDB connection error:", err.message);
+        throw err;
+      });
+  }
+  cachedDb.conn = await cachedDb.promise;
+  return cachedDb.conn;
+}
+
+// Initial connect attempt
+connectToDatabase().catch(() => {});
+
+// Middleware ensuring DB is connected before handling API requests
+app.use(async (req, res, next) => {
+  try {
+    await connectToDatabase();
+    next();
+  } catch (error) {
+    console.error("Database connection failed on request:", error.message);
+    res.status(500).json({
+      error: "Internal Server Error",
+      message: "Database connection failed. Please verify MongoDB Atlas network whitelist.",
+    });
+  }
+});
+
 
 // Request logging middleware
 app.use((req, res, next) => {
